@@ -129,11 +129,11 @@ class pcm(object):
         elif scaling==1: with_scaler = 'normal'; with_mean=True; with_std = True
         elif scaling==2: with_scaler = 'center'; with_mean=True; with_std = False
         else: raise NameError('scaling must be 0, 1 or 2')
-        
+
         if   reduction==0: with_reducer = False
         elif reduction==1: with_reducer = True
         else: raise NameError('reduction must be 0 or 1')
-        
+
         if classif=='gmm': with_classifier = 'gmm';
         else: raise NameError("classifier must be 'gmm' (no other methods implemented at this time)")
 
@@ -141,7 +141,7 @@ class pcm(object):
 
         self._props = {'K': np.int(K),
                        'F': len(features),
-                        'llh': None,
+                       'llh': None,
                         'COVARTYPE': covariance_type,
                         'with_scaler': with_scaler,
                         'with_reducer': with_reducer,
@@ -246,11 +246,11 @@ class pcm(object):
 
     def __call__(self, **kwargs):
         self.__init__(**kwargs)
-    
+
     def __iter__(self):
         self.__i = 0
         return self
-    
+
     def __next__(self):
         if self.__i < self.K:
             i = self.__i
@@ -380,7 +380,8 @@ class pcm(object):
     @property
     def plot(self):
         """Access plotting functions"""
-        # Create a mutable instance on 1st call so that later changes will be reflected in future calls
+        # Create a mutable instance on 1st call so that later changes
+        # will be reflected in future calls
         # https://stackoverflow.com/a/8140747
         if 'plot' not in self._register:
             self._register['plot'] = [_PlotMethods(self)]
@@ -393,7 +394,8 @@ class pcm(object):
 
     @property
     def timeit(self):
-        """ Return a :class:`pandas.DataFrame` with Execution time of method called on this instance """
+        """ Return a :class:`pandas.DataFrame` with Execution time of method
+            called on this instance """
 
         def get_multindex(times):
             """ Create multi-index pandas """
@@ -406,11 +408,13 @@ class pcm(object):
             levels_2 = list()
             levels_3 = list()
             levels_4 = list()
+
             if max_dpt == 1:
                 for key in times:
                     levels = key.split(".")
                     levels_1.append(levels[0])
                 return max_dpt, [levels_1]
+
             elif max_dpt == 2:
                 for key in times:
                     levels = key.split(".")
@@ -421,6 +425,7 @@ class pcm(object):
                         levels_1.append(levels[0])
                         levels_2.append(levels[1])
                 return max_dpt, [levels_1,levels_2]
+
             elif max_dpt == 3:
                 for key in times:
                     levels = key.split(".")
@@ -438,6 +443,7 @@ class pcm(object):
                         levels_2.append(levels[1])
                         levels_3.append(levels[2])
                 return max_dpt, [levels_1,levels_2,levels_3]
+
             elif max_dpt == 4:
                 for key in times:
                     levels = key.split(".")
@@ -461,14 +467,17 @@ class pcm(object):
                         levels_2.append(levels[1])
                         levels_3.append(levels[2])
                         levels_4.append(levels[3])
+
                 return max_dpt, [levels_1,levels_2,levels_3,levels_4]
 
         times = self._timeit
         max_dpt, arrays = get_multindex(times)
+
         if max_dpt == 1:
             index = pd.Index(arrays[0], names=['Method'])
             df = pd.Series([np.sum(times[key]) for key in times], index=index)
             # df = df.T
+
         elif max_dpt == 2:
             tuples = list(zip(*arrays))
             index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method'])
@@ -476,11 +485,13 @@ class pcm(object):
             df = df.unstack(0)
             df = df.drop('total')
             df = df.T
+
         elif max_dpt == 3:
             tuples = list(zip(*arrays))
             index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method', 'Sub-sub-method'])
             df = pd.Series([np.sum(times[key]) for key in times], index=index)
     #         df = df.unstack(0)
+
         elif max_dpt == 4:
             tuples = list(zip(*arrays))
             index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method', 'Sub-sub-method',
@@ -522,7 +533,7 @@ class pcm(object):
         summary = [("<pcm '%s' (K: %i, F: %i)>")%(self._props['with_classifier'],
                                                   self._props['K'],
                                                   len(self._props['features']))]
-        
+
         # PCM core properties:
         prop_info = ('Number of class: %i') % self._props['K']
         summary.append(prop_info)
@@ -535,7 +546,7 @@ class pcm(object):
         # prop_info = ('Feature axis: [%s, ..., %s]') % (repr(self._props['features'][0]),
         #                                                repr(self._props['feature_axis'][-1]))
         # summary.append(prop_info)
-        
+
         prop_info = ('Fitted: %r') % hasattr(self, 'fitted')
         summary.append(prop_info)
 
@@ -556,7 +567,8 @@ class pcm(object):
 
             # prop_info = ('\t Dimensionality Reduction: %r') %
             # summary.append(prop_info)
-            summary.append("\t Reducer: %r, %s"%(self._props['with_reducer'], type(self._reducer[feature])))
+            summary.append("\t Reducer: %r, %s"%(self._props['with_reducer'],
+                                                 type(self._reducer[feature])))
 
             if (deep):
                 # summary.append("\t\t Reducer properties:")
@@ -572,12 +584,12 @@ class pcm(object):
         if (hasattr(self,'fitted')):
             prop_info = ('\t log likelihood of the training set: %f') % self._props['llh']
             summary.append(prop_info)
-        
+
         if (deep):
             summary.append("\t Classifier properties:")
             d = self._classifier.get_params(deep=deep)
             for p in d: summary.append(("\t\t %s: %r")%(p,d[p]))
-        
+
         # Done
         return '\n'.join(summary)
 
@@ -713,7 +725,8 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified using
+            :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
@@ -727,7 +740,8 @@ class pcm(object):
             List of the input :class:`xarray.Dataset` dimensions stacked as sampling points
 
         """
-        this_context = str(action)+'.1-preprocess'
+        this_context = str(action) + '.1-preprocess'
+
         with self._context(this_context, self._context_args):
             if self._debug:
                 print("> Start preprocessing for action '%s'" % action)
@@ -826,7 +840,8 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified
+            using :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
@@ -874,14 +889,16 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified
+            using :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
 
         inplace: boolean, False by default
             If False, return a :class:`xarray.DataArray` with predicted labels
-            If True, return the input :class:`xarray.Dataset` with labels added as a new :class:`xarray.DataArray`
+            If True, return the input :class:`xarray.Dataset` with labels
+            added as a new :class:`xarray.DataArray`
 
         name: str, default is 'PCM_LABELS'
             Name of the :class:`xarray.DataArray` with labels
@@ -939,14 +956,16 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified
+            using :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
 
         inplace: boolean, False by default
             If False, return a :class:`xarray.DataArray` with predicted labels
-            If True, return the input :class:`xarray.Dataset` with labels added as a new :class:`xarray.DataArray`
+            If True, return the input :class:`xarray.Dataset` with
+            labels added as a new :class:`xarray.DataArray`
 
         name: string ('PCM_LABELS')
             Name of the DataArray holding labels.
@@ -959,13 +978,15 @@ class pcm(object):
         *or*
 
         :class:`xarray.Dataset`
-            Input dataset with component labels as a 'PCM_LABELS' new :class:`xarray.DataArray` (if option 'inplace' = True)
+            Input dataset with component labels as a 'PCM_LABELS'
+            new :class:`xarray.DataArray` (if option 'inplace' = True)
 
         """
         with self._context('fit_predict', self._context_args):
 
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='fit_predict')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  dim=dim, action='fit_predict')
 
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit_predict.fit', self._context_args):
@@ -1004,7 +1025,8 @@ class pcm(object):
             else:
                 return da
 
-    def predict_proba(self, ds, features=None, dim=None, inplace=False, name='PCM_POST', classdimname='pcm_class'):
+    def predict_proba(self, ds, features=None, dim=None, inplace=False,
+                      name='PCM_POST', classdimname='pcm_class'):
         """Predict posterior probability of each components given the data
 
         This method adds these properties to the PCM instance:
@@ -1018,14 +1040,16 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified
+            using :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
 
         inplace: boolean, False by default
             If False, return a :class:`xarray.DataArray` with predicted probabilities
-            If True, return the input :class:`xarray.Dataset` with probabilities added as a new :class:`xarray.DataArray`
+            If True, return the input :class:`xarray.Dataset` with probabilities
+            added as a new :class:`xarray.DataArray`
 
         name: str, default is 'PCM_POST'
             Name of the DataArray with prediction probability (posteriors)
@@ -1091,7 +1115,8 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified using
+            :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
@@ -1099,7 +1124,8 @@ class pcm(object):
         Returns
         -------
         log_likelihood: float
-            In the case of a GMM classifier, this is the Log likelihood of the Gaussian mixture given data
+            In the case of a GMM classifier, this is the Log likelihood of
+            the Gaussian mixture given data
 
         """
         with self._context('score', self._context_args):

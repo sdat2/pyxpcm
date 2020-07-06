@@ -83,19 +83,36 @@ class pyXpcmDataSetAccessor:
 
         return feature_in_ds
 
-    def add(self, da):
+    def add(self, da, propagate=True):
         """Add a :class:`xarray.DataArray` to this :class:`xarray.Dataset`"""
         if da.name in self._obj.data_vars:
             warnings.warn(("%s variable already in the dataset: overwriting") % (da.name))
 
+        if propogate:
+
+            attr_d = {}
+
+            # xarray does not propogate the attributes of the coordinates well.
+
+            for coord in self._obj.coords:
+                attr_d[coord] = self._obj.coords[coord].attrs
+
         # Add pyXpcm tracking clue to this DataArray:
         da.attrs['_pyXpcm_cleanable'] = True
+        # This makes it non-netcdf compliant - why would you want this?
 
         # Add it to the DataSet:
         self._obj[da.name] = da
 
         # Update internal list of added variables:
         self._added.append(da.name)
+
+        if propogate:
+
+            for coords in self._obj.coords:
+                self._obj.coords[coord].attrs = attr_d[coord]
+
+
         return self._obj
 
     def drop_all(self):

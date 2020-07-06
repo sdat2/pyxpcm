@@ -224,9 +224,11 @@ class Vertical_Interpolator(object):
 
 
 class StatisticsBackend(object):
-    """ Try to implement a flexible way of changing the statistic library used by pyXpcm for scaling and reduction methods
+    """ Try to implement a flexible way of changing the statistic library
+        used by pyXpcm for scaling and reduction methods
 
-        Users can decide if they want to use sklearn or dask_ml or any other statistic library
+        Users can decide if they want to use sklearn or dask_ml
+        or any other statistic library
 
     """
 
@@ -330,4 +332,3 @@ class StatisticsBackend(object):
         elif self.backend_type == 'inline':
             method = self.reducer_method
         return self.__check_estimator(method)(**kwargs)
-

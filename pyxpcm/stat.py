@@ -114,7 +114,8 @@ def robustness(ds, name='PCM_POST', classdimname='pcm_class', outname='PCM_ROBUS
 
         inplace: boolean, False by default
             If False, return a :class:`xarray.DataArray` with robustness
-            If True, return the input :class:`xarray.Dataset` with robustness added as a new :class:`xarray.DataArray`
+            If True, return the input :class:`xarray.Dataset` with robustness
+            added as a new :class:`xarray.DataArray`
 
         Returns
         -------
@@ -140,7 +141,8 @@ def robustness(ds, name='PCM_POST', classdimname='pcm_class', outname='PCM_ROBUS
     #
     return da
 
-def robustness_digit(ds, name='PCM_POST', classdimname='pcm_class', outname='PCM_ROBUSTNESS_CAT'):
+def robustness_digit(ds, name='PCM_POST', classdimname='pcm_class',
+                     outname='PCM_ROBUSTNESS_CAT'):
     """ Digitize classification robustness
 
         Parameters

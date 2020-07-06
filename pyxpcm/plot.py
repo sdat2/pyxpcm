@@ -327,7 +327,8 @@ def preprocessed(m, ds, features=None, dim=None, n=1000, kde=False, style='darkg
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified using
+            :class:`xarray.DataArray` attributes 'feature_name'.
 
         n : int
             Number of samples to use in scatter plots
@@ -603,5 +604,3 @@ class _PlotMethods(object):
     @docstring(quantile.__doc__)
     def quantile(self, da, **kwargs):
         return quantile(self._pcm, da, **kwargs)
-
-
