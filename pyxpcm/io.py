@@ -435,6 +435,7 @@ def to_netcdf(m, ncfile=None, global_attributes=dict(), mode='w'):
     #     if hasattr(m, 'fitted'):
     pcm2cdf['classifier'].to_netcdf(ncfile, mode='a', format='NETCDF4', group='classifier')
 
+
 def load_netcdf(ncfile):
     """ Load a PCM model from netcdf file
 

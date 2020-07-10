@@ -68,6 +68,7 @@ class pyXpcmDataSetAccessor:
 
             if not feature_name_found:
                 # Look for the feature in the dataset data variables attributes
+
                 for v in self._obj.data_vars:
                     if ('feature_name' in self._obj[v].attrs) and (self._obj[v].attrs['feature_name'] is feature_in_pcm):
                         feature_in_ds = v
@@ -78,6 +79,7 @@ class pyXpcmDataSetAccessor:
                 msg = ("Feature '%s' not found in this dataset. You may want to add the 'feature_name' "
                                   "attribute to the variable you'd like to use or provide a dictionnary")%(feature_in_pcm)
                 raise PCMFeatureError(msg)
+
             elif this_pcm._debug:
                 print(("\tIdying '%s' as '%s' in this dataset") % (feature_in_pcm, feature_in_ds))
 
@@ -85,10 +87,11 @@ class pyXpcmDataSetAccessor:
 
     def add(self, da, propagate=True):
         """Add a :class:`xarray.DataArray` to this :class:`xarray.Dataset`"""
+
         if da.name in self._obj.data_vars:
             warnings.warn(("%s variable already in the dataset: overwriting") % (da.name))
 
-        if propogate:
+        if propagate:
 
             attr_d = {}
 
@@ -107,9 +110,9 @@ class pyXpcmDataSetAccessor:
         # Update internal list of added variables:
         self._added.append(da.name)
 
-        if propogate:
+        if propagate:
 
-            for coords in self._obj.coords:
+            for coord in attr_d:
                 self._obj.coords[coord].attrs = attr_d[coord]
 
 
@@ -276,6 +279,7 @@ class pyXpcmDataSetAccessor:
         feature_dict = self.feature_dict(this_pcm, features=features)
         SD = self.sampling_dim(this_pcm, dim=dim, features=features)
         M = list()
+        
         for feature_name_in_this_pcm in feature_dict:
             feature_name_in_ds = feature_dict[feature_name_in_this_pcm]
             da = self._obj[feature_name_in_ds]
@@ -290,6 +294,7 @@ class pyXpcmDataSetAccessor:
 
                 # Nz = len((self._obj[dim].where(self._obj[dim] >= z_bto, drop=True)\
                 #                         .where(self._obj[dim] <= z_top, drop=True)).notnull())
+
                 z = self._obj[dim]
                 z_ok = np.ma.masked_inside(z, z_bto, z_top, copy=True).mask
                 Nz = np.count_nonzero(z_ok == True)

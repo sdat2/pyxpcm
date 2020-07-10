@@ -58,6 +58,7 @@ class pcm(object):
     def __init__(self,
                  K:int,
                  features:dict(),
+                 # D:int, # trying to add
                  scaling=1,
                  reduction=1, maxvar=15,
                  classif='gmm', covariance_type='full',
@@ -118,6 +119,7 @@ class pcm(object):
             Statistic library backend, 'sklearn' (default) or 'dask_ml'
 
         """
+
         if K==0:
             raise PCMClassError("Can't create a PCM with K=0")
         if K is None:
@@ -150,6 +152,7 @@ class pcm(object):
                         'features': collections.OrderedDict(features),
                         'chunk_size': chunk_size,
                         'backend': backend}
+
         self._xmask = None # xarray mask for nd-array used at pre-processing steps
         self._register = collections.OrderedDict() # Will register mutable instances of sub-modules like 'plot'
 
@@ -209,13 +212,15 @@ class pcm(object):
         # (useful for time benchmarking)
         self._context = self.__empty_context # Default is empty, do nothing
         self._context_args = dict()
+
         if timeit:
             self._context = self.__timeit_context
             self._context_args = {'maxlevel': 3, 'verb':timeit_verb}
             self._timeit = dict()
 
         # Define statistics for the fit method:
-        self._fit_stats = dict({'datetime': None, 'n_samples_seen_': None, 'score': None, 'etime': None})
+        self._fit_stats = dict({'datetime': None, 'n_samples_seen_': None,
+                                 'score': None, 'etime': None})
 
     @contextmanager
     def __timeit_context(self, name, opts=dict()):
@@ -230,6 +235,7 @@ class pcm(object):
             elapsedTime = time.time() - startTime
             trailingspace = " " * level
             trailingspace = " "
+
             if default_opts['verb']:
                 # print('... time in {} {}: {} ms'.format(trailingspace, name, int(elapsedTime * 1000)))
                 print('{} {}: {} ms'.format(trailingspace, name, int(elapsedTime * 1000)))
@@ -311,6 +317,7 @@ class pcm(object):
             X = da.stack({'sampling': sampling_dims})
             X = X.where(mask_stacked == 1, drop=True).expand_dims('dummy').transpose()#.values
             z = np.empty((1,))
+
         else:
             if not dim:
                 # Try to infer the vertical dimension name looking for the CF 'axis' attribute in all dimensions
@@ -323,6 +330,7 @@ class pcm(object):
                     raise PCMFeatureError("You must specify a vertical dimension name: "\
                                           "use argument 'dim' or "\
                                           "specify DataSet dimension the attribute 'axis' to 'Z' (CF1.6)")
+
             elif dim not in da.dims:
                 raise ValueError("Vertical dimension %s not found in this DataArray" % dim)
 
@@ -578,9 +586,11 @@ class pcm(object):
 
         # prop_info = ('Classification: %r') %
         # summary.append(prop_info)
+
         summary.append("Classifier: %r, %s"%(self._props['with_classifier'], type(self._classifier)))
         #prop_info = ('GMM covariance type: %s') % self._props['COVARTYPE']
         #summary.append(prop_info)
+
         if (hasattr(self,'fitted')):
             prop_info = ('\t log likelihood of the training set: %f') % self._props['llh']
             summary.append(prop_info)
@@ -695,7 +705,8 @@ class pcm(object):
                         self._reducer[feature_name].fit(X)
 
             with self._context(this_context + '.6-reduce_transform', self._context_args):
-                X = self._reducer[feature_name].transform(X.data) # Reduction, return np.array
+                X = self._reducer[feature_name].transform(X.data)
+                # Reduction, return np.array
 
                 # After reduction the new array is [ sampling, reduced_dim ]
                 X = xr.DataArray(X,
@@ -1098,6 +1109,55 @@ class pcm(object):
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = 1
                 da.attrs['llh'] = self._props['llh']
+
+            # Add posteriors to the dataset:
+            if inplace:
+                return ds.pyxpcm.add(da)
+            else:
+                return da
+
+    def find_i_metric(self, ds, features=None, dim=None, inplace=False,
+                      name='PCM_I', classdimname='pcm_class'):
+        """
+        >>> from math import comb
+        >>> for i in range(2, 10):
+        ...     comb(i, 2)
+        1
+        3
+        6
+        10
+        15
+        21
+        28
+        36
+        """
+
+        with self._context('predict_prob', self._context_args):
+
+            # Check if the PCM is trained:
+            validation.check_is_fitted(self, 'fitted')
+
+            # PRE-PROCESSING:
+            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='predict_proba')
+
+            # CLASSIFICATION PREDICTION:
+            with self._context('predict_proba.predict', self._context_args):
+                post_values = self._classifier.predict_proba(X)
+            # with self._context('predict_proba.score', self._context_args):
+            #    self._props['llh'] = self._classifier.score(X)
+
+            # Create a xarray with posteriors:
+            with self._context('predict_proba.xarray', self._context_args):
+                P = list()
+                for k in range(self.K):
+                    X = post_values[:, k]
+                    x = self.unravel(ds, sampling_dims, X)
+                    P.append(x)
+                da = xr.concat(P, dim=classdimname).rename(name)
+                da.attrs['long_name'] = 'PCM posteriors'
+                da.attrs['units'] = ''
+                da.attrs['valid_min'] = 0
+                da.attrs['valid_max'] = 1
 
             # Add posteriors to the dataset:
             if inplace:

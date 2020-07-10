@@ -278,8 +278,10 @@ def timeit(m, group='Method', split='Sub-method', subplot_kw=None, style='white'
 
     with axes_style(style):
         defaults = {'figsize': (5, 3), 'dpi': 90}
+
         if not subplot_kw:
             fig, ax = plt.subplots(**{**defaults, **kwargs})
+
         else:
             fig, ax = plt.subplots(**{**defaults, **kwargs}, subplot_kw=subplot_kw)
 
@@ -311,6 +313,7 @@ def timeit(m, group='Method', split='Sub-method', subplot_kw=None, style='white'
         ax.grid(True)
         ax.set_xlabel( "Time [%s]" % unit)
         ax.set_ylabel(group)
+
     return fig, ax, df
 
 def preprocessed(m, ds, features=None, dim=None, n=1000, kde=False, style='darkgrid', **kargs):
@@ -521,6 +524,7 @@ def quantile(m, da, xlim=None,
         raise ValueError("Can't distinguish the class dimension from the others")
     else:
         CLASS_DIM = da.dims[np.argwhere(np.array(da.shape) == m.K)[0][0]]
+    
     QUANT_DIM = quantdimname
     VERTICAL_DIM = list(set(da.dims) - set([CLASS_DIM]) - set([QUANT_DIM]))[0]
 
