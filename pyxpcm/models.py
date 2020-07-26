@@ -17,6 +17,7 @@ import sys
 import numpy as np
 import pandas as pd
 import xarray as xr
+xr.set_options(keep_attrs=True)
 import collections
 import inspect
 import dask
@@ -29,7 +30,8 @@ from datetime import datetime
 # Internal:
 from .plot import _PlotMethods
 from .stat import _StatMethods
-from .utils import LogDataType, Vertical_Interpolator, NoTransform, StatisticsBackend, docstring
+from .utils import (LogDataType, Vertical_Interpolator,
+                    NoTransform, StatisticsBackend, docstring)
 from . import io
 
 # Scikit-learn useful methods:
@@ -426,9 +428,11 @@ class pcm(object):
             elif max_dpt == 2:
                 for key in times:
                     levels = key.split(".")
+
                     if len(levels) == 1:
                         levels_1.append(levels[0])
                         levels_2.append('total')
+
                     if len(levels) == 2:
                         levels_1.append(levels[0])
                         levels_2.append(levels[1])
@@ -566,7 +570,8 @@ class pcm(object):
 
             # prop_info = ('\t Sample Scaling: %r') %
             # summary.append(prop_info)
-            summary.append("\t Scaler: %r, %s"%(self._props['with_scaler'], type(self._scaler[feature])))
+            summary.append("\t Scaler: %r, %s"%(self._props['with_scaler'],
+                                                type(self._scaler[feature])))
 
             if (deep):
                 # summary.append("\t\t Scaler properties:")
@@ -754,7 +759,9 @@ class pcm(object):
         this_context = str(action) + '.1-preprocess'
 
         with self._context(this_context, self._context_args):
+
             if self._debug:
+
                 print("> Start preprocessing for action '%s'" % action)
 
             # How do we find feature variable in this dataset ?
@@ -822,9 +829,11 @@ class pcm(object):
 
             with self._context(this_context + '.4-xarray', self._context_args):
                 self._xlabel = Xlabel
+
                 if self._debug:
                     print("\tFeatures array shape and type for xarray:",
                           X.shape, type(X), type(X.data))
+
                 X = xr.DataArray(X, dims=['n_samples', 'n_features'],
                                  coords={'n_samples': range(0, X.shape[0]), 'n_features': Xlabel})
 
@@ -1093,6 +1102,7 @@ class pcm(object):
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):
                 post_values = self._classifier.predict_proba(X)
+
             with self._context('predict_proba.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
 
@@ -1132,38 +1142,64 @@ class pcm(object):
         36
         """
 
+        list = [i for i in range(self.K)]
+
+        cart_prod = [(a, b) for a in list for b in list if a >= b]
+
+        print(cart_prod)
+
         with self._context('predict_prob', self._context_args):
+
+            import numpy as np
 
             # Check if the PCM is trained:
             validation.check_is_fitted(self, 'fitted')
 
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='predict_proba')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  dim=dim, action='predict_proba')
+
+            print(np.shape(X))
 
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):
                 post_values = self._classifier.predict_proba(X)
+                rank = (-post_values).argsort()
+                print(np.shape(rank))
+
             # with self._context('predict_proba.score', self._context_args):
             #    self._props['llh'] = self._classifier.score(X)
 
             # Create a xarray with posteriors:
             with self._context('predict_proba.xarray', self._context_args):
-                P = list()
+                P = []
                 for k in range(self.K):
                     X = post_values[:, k]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
-                da = xr.concat(P, dim=classdimname).rename(name)
+                da = xr.concat(P, dim=classdimname).rename('PCM_POST')
                 da.attrs['long_name'] = 'PCM posteriors'
                 da.attrs['units'] = ''
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = 1
 
+            with self._context('add_rank.xarray', self._context_args):
+                P = [] # empty list
+                for k in range(self.K):
+                    X = rank[:, k]
+                    x = self.unravel(ds, sampling_dims, X)
+                    P.append(x)
+                da_rank = xr.concat(P, dim=classdimname).rename('PCM_RANK') # .astype(int)
+                da_rank.attrs['long_name'] = 'PCM rank'
+                da_rank.attrs['units'] = ''
+                da_rank.attrs['valid_min'] = 0
+                da_rank.attrs['valid_max'] = self.K
+
             # Add posteriors to the dataset:
             if inplace:
-                return ds.pyxpcm.add(da)
+                return ds.pyxpcm.add(da_rank)
             else:
-                return da
+                return da, da_rank
 
     def score(self, ds, features=None, dim=None):
         """Compute the per-sample average log-likelihood of the given data
@@ -1214,7 +1250,8 @@ class pcm(object):
 
         features: dict()
             Definitions of PCM features in the input :class:`xarray.Dataset`.
-            If not specified or set to None, features are identified using :class:`xarray.DataArray` attributes 'feature_name'.
+            If not specified or set to None, features are identified using
+            :class:`xarray.DataArray` attributes 'feature_name'.
 
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
@@ -1257,6 +1294,8 @@ class pcm(object):
 
             # COMPUTE BIC:
             N_samples = X.shape[0]
-            bic = (-2 * llh * N_samples + _n_parameters(self._classifier) * np.log(N_samples))
+            bic = (- 2 * llh * N_samples
+                   + _n_parameters(self._classifier)
+                   * np.log(N_samples))
 
         return bic

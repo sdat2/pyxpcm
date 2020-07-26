@@ -17,6 +17,7 @@ import sys
 import warnings
 import numpy as np
 import xarray as xr
+xr.set_options(keep_attrs=True)
 import dask
 from .models import pcm, PCMFeatureError
 from . import stat
@@ -92,11 +93,8 @@ class pyXpcmDataSetAccessor:
             warnings.warn(("%s variable already in the dataset: overwriting") % (da.name))
 
         if propagate:
-
             attr_d = {}
-
             # xarray does not propogate the attributes of the coordinates well.
-
             for coord in self._obj.coords:
                 attr_d[coord] = self._obj.coords[coord].attrs
 
@@ -111,10 +109,8 @@ class pyXpcmDataSetAccessor:
         self._added.append(da.name)
 
         if propagate:
-
             for coord in attr_d:
                 self._obj.coords[coord].attrs = attr_d[coord]
-
 
         return self._obj
 
@@ -279,7 +275,7 @@ class pyXpcmDataSetAccessor:
         feature_dict = self.feature_dict(this_pcm, features=features)
         SD = self.sampling_dim(this_pcm, dim=dim, features=features)
         M = list()
-        
+
         for feature_name_in_this_pcm in feature_dict:
             feature_name_in_ds = feature_dict[feature_name_in_this_pcm]
             da = self._obj[feature_name_in_ds]
