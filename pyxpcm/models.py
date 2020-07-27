@@ -480,7 +480,7 @@ class pcm(object):
                         levels_3.append(levels[2])
                         levels_4.append(levels[3])
 
-                return max_dpt, [levels_1,levels_2,levels_3,levels_4]
+                return max_dpt, [levels_1, levels_2, levels_3, levels_4]
 
         times = self._timeit
         max_dpt, arrays = get_multindex(times)
@@ -592,7 +592,8 @@ class pcm(object):
         # prop_info = ('Classification: %r') %
         # summary.append(prop_info)
 
-        summary.append("Classifier: %r, %s"%(self._props['with_classifier'], type(self._classifier)))
+        summary.append("Classifier: %r, %s"%(self._props['with_classifier'],
+                                             type(self._classifier)))
         #prop_info = ('GMM covariance type: %s') % self._props['COVARTYPE']
         #summary.append(prop_info)
 
@@ -637,18 +638,21 @@ class pcm(object):
             List of the input :class:`xarray.DataArray` dimensions stacked as sampling points
 
         """
-        this_context = str(action)+'.1-preprocess.2-feature_'+feature_name
+        this_context = str(action) + '.1-preprocess.2-feature_' + feature_name
         with self._context(this_context + '.total', self._context_args):
 
             # MAKE THE ND-ARRAY A 2D-ARRAY
             with self._context(this_context + '.1-ravel', self._context_args):
-                X, z, sampling_dims = self.ravel(da, dim=dim, feature_name=feature_name)
+                X, z, sampling_dims = self.ravel(da, dim=dim,
+                                                 feature_name=feature_name)
+                print(z)
                 if self._debug:
                     print("\t", "X RAVELED with success", str(LogDataType(X)))
 
             # INTERPOLATION STEP:
             with self._context(this_context + '.2-interp', self._context_args):
                 X = self._interpoler[feature_name].transform(X, z)
+                print(z)
                 if self._debug:
                     if isinstance(self._interpoler[feature_name], NoTransform):
                         print("\t", "X INTERPOLATED with success (NoTransform)", str(LogDataType(X)))
@@ -663,7 +667,7 @@ class pcm(object):
             # predicting a new dataset
 
             # SCALING:
-            with self._context(this_context+'.3-scale_fit', self._context_args):
+            with self._context(this_context + '.3-scale_fit', self._context_args):
                 if not hasattr(self, 'fitted'):
                     self._scaler[feature_name].fit(X.data)
                     if 'units' in da.attrs:
@@ -809,7 +813,7 @@ class pcm(object):
                         if (action == 'fit') or (action == 'fit_predict'):
                             self._homogeniser[feature_in_pcm]['mean'] = x.mean().values
                             self._homogeniser[feature_in_pcm]['std'] = x.std().values
-                            #todo _homogeniser should be a proper standard scaler
+                            # todo _homogeniser should be a proper standard scaler
                         # TRANSFORM:
                         x = (x-self._homogeniser[feature_in_pcm]['mean'])/\
                             self._homogeniser[feature_in_pcm]['std']
@@ -835,12 +839,24 @@ class pcm(object):
                           X.shape, type(X), type(X.data))
 
                 X = xr.DataArray(X, dims=['n_samples', 'n_features'],
-                                 coords={'n_samples': range(0, X.shape[0]), 'n_features': Xlabel})
+                                 coords={'n_samples': range(0, X.shape[0]),
+                                         'n_features': Xlabel})
 
             if self._debug:
-                print("> Preprocessing done, working with final X (%s) array of shape:" % type(X), X.shape,
+                print("> Preprocessing done, working with final X (%s) array of shape:"
+                      % type(X), X.shape,
                       " and sampling dimensions:", sampling_dims)
         return X, sampling_dims
+
+    def add_pca_to_xarray(self, ds, features=None, dim=None, action='fit', mask=None):
+        with self._context('fit', self._context_args) :
+            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim,
+                                                  action=action, mask=mask)
+        print(dir(X))
+        print(np.shape(X))
+        print(type(X))
+        print(sampling_dims)
+        return X
 
     def fit(self, ds, features=None, dim=None):
         """Estimate PCM parameters
@@ -895,7 +911,8 @@ class pcm(object):
         self.fitted = True
         return self
 
-    def predict(self, ds, features=None, dim=None, inplace=False, name='PCM_LABELS'):
+    def predict(self, ds, features=None, dim=None,
+                inplace=False, name='PCM_LABELS'):
         """Predict labels for profile samples
 
         This method add these properties to the PCM object:
@@ -953,7 +970,7 @@ class pcm(object):
                 da.attrs['long_name'] = 'PCM labels'
                 da.attrs['units'] = ''
                 da.attrs['valid_min'] = 0
-                da.attrs['valid_max'] = self._props['K']-1
+                da.attrs['valid_max'] = self._props['K'] - 1
                 da.attrs['llh'] = llh
 
             # Add labels to the dataset:
@@ -1113,6 +1130,7 @@ class pcm(object):
                     X = post_values[:, k]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
+                
                 da = xr.concat(P, dim=classdimname).rename(name)
                 da.attrs['long_name'] = 'PCM posteriors'
                 da.attrs['units'] = ''
