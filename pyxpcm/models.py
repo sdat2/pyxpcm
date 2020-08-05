@@ -205,10 +205,10 @@ class pcm(object):
             self._homogeniser[feature_name] = {'mean': 0, 'std': 1}
 
         self._classifier = GaussianMixture(n_components=self._props['K'],
-                                          covariance_type=self._props['COVARTYPE'],
-                                          init_params='kmeans',
-                                          max_iter=1000,
-                                          tol=1e-6)
+                                           covariance_type=self._props['COVARTYPE'],
+                                           init_params='kmeans',
+                                           max_iter=1000,
+                                           tol=1e-6)
 
         # Define the "context" to execute some functions inner code
         # (useful for time benchmarking)
@@ -317,7 +317,8 @@ class pcm(object):
             sampling_dims = list(da.dims)
             # Apply all-features mask:
             X = da.stack({'sampling': sampling_dims})
-            X = X.where(mask_stacked == 1, drop=True).expand_dims('dummy').transpose()#.values
+            X = X.where(mask_stacked == 1,
+                        drop=True).expand_dims('dummy').transpose()#.values
             z = np.empty((1,))
 
         else:
@@ -522,7 +523,8 @@ class pcm(object):
         """ Estimator fit properties
 
             The number of samples processed by the estimator
-            Will be reset on new calls to fit, but increments across partial_fit calls.
+            Will be reset on new calls to fit,
+            but increments across partial_fit calls.
         """
         return self._fit_stats
 
@@ -848,15 +850,31 @@ class pcm(object):
                       " and sampling dimensions:", sampling_dims)
         return X, sampling_dims
 
-    def add_pca_to_xarray(self, ds, features=None, dim=None, action='fit', mask=None):
-        with self._context('fit', self._context_args) :
+    def add_pca_to_xarray(self, ds, features=None,
+                          dim=None, action='fit',
+                          mask=None, inplace=False):
+        with self._context('fit', self._context_args):
             X, sampling_dims = self.preprocessing(ds, features=features, dim=dim,
                                                   action=action, mask=mask)
-        print(dir(X))
-        print(np.shape(X))
-        print(type(X))
-        print(sampling_dims)
-        return X
+            pca_values = X.values
+            n_features = str(X.coords['n_features'].values)
+
+        with self._context('add_pca.xarray', self._context_args):
+            P = list()
+            for k in range(np.shape(pca_values)[1]):
+                X = pca_values[:, k]
+                x = self.unravel(ds, sampling_dims, X)
+                P.append(x)
+
+            da = xr.concat(P, dim='pca').rename('PCA_VALUES')
+            da.attrs['long_name'] = 'PCA Values'
+            da.attrs['n_features'] = n_features
+
+        # Add posteriors to the dataset:
+        if inplace:
+            return ds.pyxpcm.add(da)
+        else:
+            return da
 
     def fit(self, ds, features=None, dim=None):
         """Estimate PCM parameters
@@ -888,7 +906,8 @@ class pcm(object):
         """
         with self._context('fit', self._context_args) :
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='fit')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  dim=dim, action='fit')
 
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit.fit', self._context_args):
@@ -900,6 +919,7 @@ class pcm(object):
             # Furthermore gather some information about the fit:
             self._fit_stats['score'] = self._props['llh']
             self._fit_stats['datetime'] = datetime.utcnow()
+
             if 'n_samples_seen_' not in self._classifier.__dict__:
                 self._fit_stats['n_samples_seen_'] = X.shape[0]
             else:
@@ -950,13 +970,15 @@ class pcm(object):
         :class:`xarray.Dataset`
             Input dataset with Component labels as a 'PCM_LABELS' new :class:`xarray.DataArray`
             (if option 'inplace' = True)
+
         """
         with self._context('predict', self._context_args):
             # Check if the PCM is trained:
             validation.check_is_fitted(self, 'fitted')
 
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='predict')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  dim=dim, action='predict')
 
             # CLASSIFICATION PREDICTION:
             with self._context('predict.predict', self._context_args):
@@ -1103,7 +1125,8 @@ class pcm(object):
         *or*
 
         :class:`xarray.Dataset`
-            Input dataset with Component Probability as a 'PCM_POST' new :class:`xarray.DataArray`
+            Input dataset with Component Probability as a
+            'PCM_POST' new :class:`xarray.DataArray`
             (if option 'inplace' = True)
 
 
@@ -1114,7 +1137,8 @@ class pcm(object):
             validation.check_is_fitted(self, 'fitted')
 
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim, action='predict_proba')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  dim=dim, action='predict_proba')
 
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):
@@ -1130,7 +1154,7 @@ class pcm(object):
                     X = post_values[:, k]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
-                
+
                 da = xr.concat(P, dim=classdimname).rename(name)
                 da.attrs['long_name'] = 'PCM posteriors'
                 da.attrs['units'] = ''
@@ -1182,7 +1206,7 @@ class pcm(object):
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):
                 post_values = self._classifier.predict_proba(X)
-                rank = (-post_values).argsort()
+                rank = np.negative(post_values).argsort()
                 print(np.shape(rank))
 
             # with self._context('predict_proba.score', self._context_args):
@@ -1195,6 +1219,7 @@ class pcm(object):
                     X = post_values[:, k]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
+
                 da = xr.concat(P, dim=classdimname).rename('PCM_POST')
                 da.attrs['long_name'] = 'PCM posteriors'
                 da.attrs['units'] = ''
@@ -1202,13 +1227,15 @@ class pcm(object):
                 da.attrs['valid_max'] = 1
 
             with self._context('add_rank.xarray', self._context_args):
-                P = [] # empty list
+                P = []   # empty list
                 for k in range(self.K):
                     X = rank[:, k]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
-                da_rank = xr.concat(P, dim=classdimname).rename('PCM_RANK') # .astype(int)
-                da_rank.attrs['long_name'] = 'PCM rank'
+
+                da_rank = xr.concat(P, dim=classdimname).rename('PCM_RANK')
+                # .astype(int)
+                da_rank.attrs['long_name'] = 'PCM Rank'
                 da_rank.attrs['units'] = ''
                 da_rank.attrs['valid_min'] = 0
                 da_rank.attrs['valid_max'] = self.K
@@ -1248,7 +1275,8 @@ class pcm(object):
             validation.check_is_fitted(self, 'fitted')
 
             # PRE-PROCESSING:
-            X, sampling_dims = self.preprocessing(ds, features=features, action='score')
+            X, sampling_dims = self.preprocessing(ds, features=features,
+                                                  action='score')
 
             # COMPUTE THE PREDICTION SCORE:
             with self._context('score.score', self._context_args):
@@ -1257,7 +1285,8 @@ class pcm(object):
         return llh
 
     def bic(self, ds, features=None, dim=None):
-        """Compute Bayesian information criterion for the current model on the input dataset
+        """Compute Bayesian information criterion for
+           the current model on the input dataset
 
         Only for a GMM classifier
 

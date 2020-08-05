@@ -13,6 +13,12 @@ MANIFEST.in
 # Local dev folder:
 /dev/
 
+*.nc
+web/
+ww/
+nc/
+old-ipynb/
+
 # Local devel usefull folder.
 /local_playground/
 
@@ -33,4 +39,3 @@ docs/generated/
 
 #
 *.pdf
-
