@@ -40,6 +40,7 @@ def return_density(pt_values, practical_salt_values,
 def create_datarray(format_dataarray, values, name, v_attr_d):
 
     c_attr_d = {}
+    coord_d = {}
     c_value_l = []
     dims_l = []
     for coord in format_dataarray.coords:
@@ -48,15 +49,22 @@ def create_datarray(format_dataarray, values, name, v_attr_d):
             c_value_l.append(format_dataarray.coords[coord].values)
             # dims_l.append(coord)
 
-    print(format_dataarray.dims)
-    print(c_value_l)
+    #print(format_dataarray.dims)
+    #print(c_value_l)
+    c_value_l.reverse()
 
     for item in c_value_l:
         print(np.shape(item))
 
+    for dim_name in format_dataarray.dims: #format_dataarray.dims:
+        if dim_name != 'time':
+            coord_d[dim_name] = (dim_name ,format_dataarray.coords[dim_name].values)
+
     da = xr.DataArray(values,
                       dims=format_dataarray.dims,
-                      coords=c_value_l.reverse()).rename(name)
+                      coords=coord_d
+                      #coords=c_value_l
+                      ).rename(name)
 
     for key in v_attr_d:
         da.attrs[key] = v_attr_d[key]
@@ -123,14 +131,12 @@ def test_density_da(time_i=42, max_depth=2000):
     for coord in ds.THETA.coords:
         print(np.shape(ds.THETA.coords[coord].attrs))
 
-    print(np.shape(ds.THETA.values))
-
-    print(np.shape(rho_values))
-    print(np.shape(ct_values))
+    # print(np.shape(ds.THETA.values))
+    # print(np.shape(rho_values))
+    # print(np.shape(ct_values))
 
     density_da = create_known_datarray(ds.THETA, rho_values, 'Density')
     ct_da = create_known_datarray(ds.THETA, ct_values, 'ct')
     pressure_da = create_known_datarray(ds.THETA, pressure_values, 'ct')
 
-
-    return density_da, ct_da, pressure_da
+    return density_da, ct_da, pressure_da, ds.THETA
