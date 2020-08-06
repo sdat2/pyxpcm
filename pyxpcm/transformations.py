@@ -33,7 +33,9 @@ def return_density(pt_values, practical_salt_values,
     ct_values = gsw.conversions.CT_from_pt(absolute_salinity, pt_values)
     rho_values = gsw.density.rho(absolute_salinity, ct_values,
                                  pressure_values)
-    print(np.shape(rho_values))
+
+    # print(np.shape(rho_values))
+
     return rho_values, ct_values, pressure_values
 
 
@@ -53,12 +55,12 @@ def create_datarray(format_dataarray, values, name, v_attr_d):
     #print(c_value_l)
     c_value_l.reverse()
 
-    for item in c_value_l:
-        print(np.shape(item))
+    #for item in c_value_l:
+    #    print(np.shape(item))
 
     for dim_name in format_dataarray.dims: #format_dataarray.dims:
         if dim_name != 'time':
-            coord_d[dim_name] = (dim_name ,format_dataarray.coords[dim_name].values)
+            coord_d[dim_name] = (dim_name, format_dataarray.coords[dim_name].values)
 
     da = xr.DataArray(values,
                       dims=format_dataarray.dims,
@@ -128,8 +130,8 @@ def test_density_da(time_i=42, max_depth=2000):
                    ds.where(ds.SALT!=0.0).SALT.values,
                    ds.XC.values, ds.YC.values, ds.Z.values)
 
-    for coord in ds.THETA.coords:
-        print(np.shape(ds.THETA.coords[coord].attrs))
+    #for coord in ds.THETA.coords:
+    #    print(np.shape(ds.THETA.coords[coord].attrs))
 
     # print(np.shape(ds.THETA.values))
     # print(np.shape(rho_values))
@@ -140,3 +142,44 @@ def test_density_da(time_i=42, max_depth=2000):
     pressure_da = create_known_datarray(ds.THETA, pressure_values, 'ct')
 
     return density_da, ct_da, pressure_da, ds.THETA
+
+
+def create_whole_density_netcdf():
+
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    salt_nc = xr.open_dataset(salt)
+
+    for time_i in range(salt_nc.dims['time']):
+
+        print(time_i)
+
+        (density_da, ct_da,
+         pressure_da, theta_da) = test_density_da(time_i=time_i,
+                                                  max_depth=0)
+
+        density_da = density_da.expand_dims(dim='time', axis=None)
+
+        density_da = density_da.assign_coords({"time":
+            ("time", [salt_nc.isel(time=time_i).coords['time'].values])})
+
+        density_da.coords['time'].attrs = salt_nc.coords['time'].attrs
+
+        density_da.to_netcdf('nc/rho/density_' + str(time_i) + '.nc',
+                             format='netcdf4')
+
+
+def merge_whole_density_netcdf():
+
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    salt_nc = xr.open_dataset(salt)
+
+
+    rho_da = xr.open_mfdataset('nc/rho/*.nc', concat_dim="time",
+                           combine='by_coords',
+                           data_vars='minimal',
+                           coords='minimal', compat='override')
+    # this is too intense for memory
+
+    return rho_da
