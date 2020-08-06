@@ -113,6 +113,7 @@ def create_known_datarray(format_dataarray, values, name):
 
 
 def test_density_da(time_i=42, max_depth=2000):
+
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
@@ -171,11 +172,6 @@ def create_whole_density_netcdf():
 
 def merge_whole_density_netcdf():
 
-    main_dir = '/Users/simon/bsose_monthly/'
-    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
-    salt_nc = xr.open_dataset(salt)
-
-
     rho_da = xr.open_mfdataset('nc/rho/*.nc', concat_dim="time",
                            combine='by_coords',
                            data_vars='minimal',
@@ -183,3 +179,28 @@ def merge_whole_density_netcdf():
     # this is too intense for memory
 
     return rho_da
+
+def save_density_netcdf(rho_da):
+
+    xr.save_mfdataset([rho_da], ['nc/Density.nc'], format='NETCDF4')
+
+
+def reload_density_netcdf():
+
+    return xr.open_dataset('nc/density.nc')
+
+
+def x_grad():
+    density_da = xr.open_mfdataset('nc/density.nc')
+    grad_da = density_da.Density.differentiate("XC")
+    density_da['x_grad'] = grad_da
+    grad_ds = density_da.drop('Density')
+    xr.save_mfdataset([grad_ds], ['nc/density_grad_x.nc'], format='NETCDF4')
+
+
+def y_grad():
+    density_da = xr.open_mfdataset('nc/density.nc')
+    grad_da = density_da.Density.differentiate("YC")
+    density_da['y_grad'] = grad_da
+    grad_ds = density_da.drop('Density')
+    xr.save_mfdataset([grad_ds], ['nc/density_grad_y.nc'], format='NETCDF4')
