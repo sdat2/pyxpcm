@@ -173,9 +173,9 @@ def create_whole_density_netcdf():
 def merge_whole_density_netcdf():
 
     rho_da = xr.open_mfdataset('nc/rho/*.nc', concat_dim="time",
-                           combine='by_coords',
-                           data_vars='minimal',
-                           coords='minimal', compat='override')
+                               combine='by_coords',
+                               data_vars='minimal',
+                               coords='minimal', compat='override')
     # this is too intense for memory
 
     return rho_da
@@ -191,16 +191,49 @@ def reload_density_netcdf():
 
 
 def x_grad():
-    density_da = xr.open_mfdataset('nc/density.nc')
-    grad_da = density_da.Density.differentiate("XC")
+    density_da = xr.open_mfdataset('nc/density.nc', decode_cf=False).astype('float32')
+    grad_da = density_da.Density.differentiate("XC").astype('float32')
     density_da['x_grad'] = grad_da
-    grad_ds = density_da.drop('Density')
+    grad_ds = density_da.drop('Density').astype('float32')
     xr.save_mfdataset([grad_ds], ['nc/density_grad_x.nc'], format='NETCDF4')
 
 
-def y_grad():
-    density_da = xr.open_mfdataset('nc/density.nc')
-    grad_da = density_da.Density.differentiate("YC")
-    density_da['y_grad'] = grad_da
-    grad_ds = density_da.drop('Density')
-    xr.save_mfdataset([grad_ds], ['nc/density_grad_y.nc'], format='NETCDF4')
+def y_grad(set=False):
+    density_da = xr.open_mfdataset('nc/density.nc', decode_cf=False, parallel=True).astype('float32')
+    grad_da = density_da.Density.astype('float32').differentiate("YC").astype('float32')
+    del density_da
+    if not set:
+        grad_da.to_netcdf('nc/density_grad_y_da.nc', engine='netcdf4')
+    else:
+        grad_ds = grad_da.to_dataset().astype('float32')
+        #density_da['y_grad'] = grad_da
+        #grad_ds = density_da.drop('Density')
+        xr.save_mfdataset([grad_ds],
+                          ['nc/density_grad_y.nc'],
+                          format='NETCDF4')
+
+
+def take_derivative_density(dimension="YC", typ='float32', engine='h5netcdf'):
+
+    if dimension == 'XC':
+        chunk_d = {'time': 1, 'Z': 1, 'YC': 1, 'XC': 2160}
+    elif dimension == 'YC':
+        chunk_d = {'time': 1, 'Z': 1, 'YC': 588, 'XC': 1}
+
+    density_ds = xr.open_mfdataset('nc/density.nc',
+                                   #engine=engine,
+                                   #decode_cf=False,
+                                   combine='by_coords',
+                                   data_vars='minimal',
+                                   coords='minimal',
+                                   compat='override',
+                                   #parallel=True
+                                   ).astype(typ).chunk(chunks=chunk_d)
+
+
+    density_ds.chunk(chunks=chunk_d)
+    grad_da = density_ds.Density.astype(typ).differentiate(dimension).astype(typ).chunk(chunks=chunk_d)
+    grad_ds = grad_da.to_dataset().astype(typ).chunk(chunks=chunk_d)
+    xr.save_mfdataset([grad_ds],
+                      ['nc/density_grad_YC.nc'],
+                      format='NETCDF4')
