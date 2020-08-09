@@ -216,24 +216,23 @@ def y_grad(set=False):
 def take_derivative_density(dimension="YC", typ='float32', engine='h5netcdf'):
 
     if dimension == 'XC':
-        chunk_d = {'time': 1, 'Z': 1, 'YC': 1, 'XC': 2160}
+        chunk_d = {'time': 1, 'Z': 52, 'YC': 1, 'XC': 2160}
     elif dimension == 'YC':
-        chunk_d = {'time': 1, 'Z': 1, 'YC': 588, 'XC': 1}
+        chunk_d = {'time': 1, 'Z': 52, 'YC': 588, 'XC': 1}
 
     density_ds = xr.open_mfdataset('nc/density.nc',
                                    #engine=engine,
                                    #decode_cf=False,
+                                   chunks=chunk_d,
                                    combine='by_coords',
                                    data_vars='minimal',
                                    coords='minimal',
                                    compat='override',
-                                   #parallel=True
-                                   ).astype(typ).chunk(chunks=chunk_d)
+                                   parallel=True
+                                   ).astype(typ)
 
-
-    density_ds.chunk(chunks=chunk_d)
-    grad_da = density_ds.Density.astype(typ).differentiate(dimension).astype(typ).chunk(chunks=chunk_d)
-    grad_ds = grad_da.to_dataset().astype(typ).chunk(chunks=chunk_d)
+    grad_da = density_ds.Density.differentiate(dimension)#.astype(typ).chunk(chunks=chunk_d)
+    grad_ds = grad_da.to_dataset()#.astype(typ).chunk(chunks=chunk_d)
     xr.save_mfdataset([grad_ds],
                       ['nc/density_grad_YC.nc'],
                       format='NETCDF4')
