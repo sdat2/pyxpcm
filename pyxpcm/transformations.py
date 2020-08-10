@@ -215,14 +215,12 @@ def y_grad(set=False):
 
 def take_derivative_density(dimension="YC", typ='float32', engine='h5netcdf'):
 
-    if dimension == 'XC':
-        chunk_d = {'time': 1, 'Z': 52, 'YC': 1, 'XC': 2160}
-    elif dimension == 'YC':
-        chunk_d = {'time': 1, 'Z': 52, 'YC': 588, 'XC': 1}
+
+    chunk_d = {'time': 1, 'Z': 52, 'YC': 588, 'XC': 2160}
 
     density_ds = xr.open_mfdataset('nc/density.nc',
-                                   #engine=engine,
-                                   #decode_cf=False,
+                                   # engine=engine,
+                                   # decode_cf=False,
                                    chunks=chunk_d,
                                    combine='by_coords',
                                    data_vars='minimal',
@@ -231,8 +229,15 @@ def take_derivative_density(dimension="YC", typ='float32', engine='h5netcdf'):
                                    parallel=True
                                    ).astype(typ)
 
-    grad_da = density_ds.Density.differentiate(dimension)#.astype(typ).chunk(chunks=chunk_d)
-    grad_ds = grad_da.to_dataset()#.astype(typ).chunk(chunks=chunk_d)
+    grad_da = density_ds.Density.differentiate(dimension)
+    #.astype(typ).chunk(chunks=chunk_d)
+
+    name = 'Density_Gradient_' + dimension
+    grad_ds = grad_da.to_dataset().rename_vars({'Density': name})
+    grad_ds[name].attrs['long_name'] = 'Density Gradient ' + dimension
+    grad_ds[name].attrs['units'] = 'kg m-3 box-1'
+
+    # .astype(typ).chunk(chunks=chunk_d)
     xr.save_mfdataset([grad_ds],
-                      ['nc/density_grad_YC.nc'],
+                      ['nc/density_grad_' + dimension + '.nc'],
                       format='NETCDF4')
