@@ -167,7 +167,7 @@ class pcm(object):
         self._reducer = collections.OrderedDict()
         self._homogeniser = collections.OrderedDict()
 
-        # Load estimators for a specific backend:
+        # Load estimators for a statistics backend:
         bck = StatisticsBackend(backend, scaler='StandardScaler', reducer='PCA')
 
         for feature_name in features:
@@ -178,6 +178,7 @@ class pcm(object):
             # self._scaler[feature_name] = preprocessing.StandardScaler(with_mean=with_mean,
             #                                             with_std=with_std)
             if 'none' not in self._props['with_scaler']:
+                # _scaler is an ordered dict object with
                 self._scaler[feature_name] = bck.scaler(with_mean=with_mean, with_std=with_std)
             else:
                 self._scaler[feature_name] = NoTransform()
@@ -323,7 +324,8 @@ class pcm(object):
 
         else:
             if not dim:
-                # Try to infer the vertical dimension name looking for the CF 'axis' attribute in all dimensions
+                # Try to infer the vertical dimension name looking for the
+                # CF 'axis' attribute in all dimensions
                 dim_found = False
                 for this_dim in da.dims:
                     if ('axis' in da[this_dim].attrs) and (da[this_dim].attrs['axis'] == 'Z'):
@@ -385,7 +387,7 @@ class pcm(object):
 
     @property
     def features(self):
-        """Return features definition dictionnary"""
+        """Return features definition dictionary"""
         return self._props['features']
 
     @property
@@ -503,7 +505,7 @@ class pcm(object):
             tuples = list(zip(*arrays))
             index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method', 'Sub-sub-method'])
             df = pd.Series([np.sum(times[key]) for key in times], index=index)
-    #         df = df.unstack(0)
+            # df = df.unstack(0)
 
         elif max_dpt == 4:
             tuples = list(zip(*arrays))
@@ -596,8 +598,8 @@ class pcm(object):
 
         summary.append("Classifier: %r, %s"%(self._props['with_classifier'],
                                              type(self._classifier)))
-        #prop_info = ('GMM covariance type: %s') % self._props['COVARTYPE']
-        #summary.append(prop_info)
+        # prop_info = ('GMM covariance type: %s') % self._props['COVARTYPE']
+        # summary.append(prop_info)
 
         if (hasattr(self,'fitted')):
             prop_info = ('\t log likelihood of the training set: %f') % self._props['llh']
@@ -612,7 +614,10 @@ class pcm(object):
         return '\n'.join(summary)
 
     def preprocessing_this(self, da, dim=None, feature_name=str(), action='?'):
-        """Pre-process data before anything
+        """
+        This function is called from within `preprocessing`
+
+        Pre-process data before anything
 
         Possible pre-processing steps:
 
@@ -638,6 +643,10 @@ class pcm(object):
 
         sampling_dims: list()
             List of the input :class:`xarray.DataArray` dimensions stacked as sampling points
+
+
+        TODO Make possible to append PCAs
+
 
         """
         this_context = str(action) + '.1-preprocess.2-feature_' + feature_name
@@ -671,23 +680,28 @@ class pcm(object):
             # SCALING:
             with self._context(this_context + '.3-scale_fit', self._context_args):
                 if not hasattr(self, 'fitted'):
+                    # if not fitted then call _scaler[feature_name] (an ordered dict containing)
                     self._scaler[feature_name].fit(X.data)
                     if 'units' in da.attrs:
+                        # propagate units to properly label graphs.
                         self._scaler_props[feature_name]['units'] = da.attrs['units']
 
             with self._context(this_context + '.4-scale_transform', self._context_args):
                 try:
                     X.data = self._scaler[feature_name].transform(X.data, copy=False)
                 except ValueError:
-                    if self._debug: print("\t\t Fail to scale.transform without copy, fall back on copy=True")
+                    if self._debug:
+                        print("\t\t Fail to scale.transform without copy, fall back on copy=True")
                     try:
                         X.data = self._scaler[feature_name].transform(X.data, copy=True)
                     except ValueError:
-                        if self._debug: print("\t\t Fail to scale.transform with copy, fall back on input copy")
+                        if self._debug:
+                            print("\t\t Fail to scale.transform with copy, fall back on input copy")
                         X.data = self._scaler[feature_name].transform(X.data.copy())
                         pass
                     except:
-                        if self._debug: print(X.values.flags['WRITEABLE'])
+                        if self._debug:
+                            print(X.values.flags['WRITEABLE'])
                         raise
                     pass
                 except:
@@ -696,14 +710,16 @@ class pcm(object):
                 if self._debug:
                     print("\t", "X SCALED with success)", str(LogDataType(X)))
 
-            # REDUCTION:
+            # REDUCTION VIA PCA:
+
+            # Fit PCA if not already fitted:
             with self._context(this_context + '.5-reduce_fit', self._context_args):
                 if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
 
                     if self.backend == 'dask_ml':
                         # We have to convert any type of data array into a Dask array because
                         # dask_ml cannot handle anything else (!)
-                        #todo Raise an issue on dask_ml github to ask why is this choice made
+                        # TODO Raise an issue on dask_ml github to ask why is this choice made
                         # Related issues:
                         #   https://github.com/dask/dask-ml/issues/6
                         #   https://github.com/dask/dask-ml/issues/541
@@ -711,10 +727,14 @@ class pcm(object):
                         X.data = dask.array.asarray(X.data, chunks=X.shape)
 
                     if isinstance(X.data, dask.array.Array):
+
                         self._reducer[feature_name].fit(X.data)
+
                     else:
+
                         self._reducer[feature_name].fit(X)
 
+            # REDUCE VIA PCA:
             with self._context(this_context + '.6-reduce_transform', self._context_args):
                 X = self._reducer[feature_name].transform(X.data)
                 # Reduction, return np.array
@@ -726,7 +746,6 @@ class pcm(object):
                                          'n_features': np.arange(0,X.shape[1])})
                 if self._debug:
                     print("\t", "X REDUCED with success)", str(LogDataType(X)))
-
 
         # Output:
         return X, sampling_dims
@@ -787,10 +806,11 @@ class pcm(object):
             F = self.F # Nb of features
 
             for feature_in_pcm in features_dict:
+                # TODO amalgamation function needs to be introduced here, and fed into preprocess this.
                 feature_in_ds = features_dict[feature_in_pcm]
                 if self._debug:
-                    print( ("\n\t> Preprocessing xarray dataset '%s' as PCM feature '%s'")\
-                           %(feature_in_ds, feature_in_pcm) )
+                    print("\n\t> Preprocessing xarray dataset '%s' as PCM feature '%s'"
+                          % (feature_in_ds, feature_in_pcm))
 
                 if ('maxlevel' in self._context_args) and (self._context_args['maxlevel'] <= 2):
                     a = this_context + '.2-features'
@@ -798,17 +818,20 @@ class pcm(object):
                     a = this_context
                 with self._context(a, self._context_args):
                     da = ds[feature_in_ds]
+                    # PREPROCESS THIS FUNCTION CALLED FROM HERE
                     x, sampling_dims = self.preprocessing_this(da,
                                                                dim=dim,
                                                                feature_name=feature_in_pcm,
                                                                action=action)
-                    xlabel = ["%s_%i"%(feature_in_pcm, i) for i in range(0, x.shape[1])]
+                    xlabel = ["%s_%i" % (feature_in_pcm, i) for i in range(0, x.shape[1])]
                     if self._debug:
-                        print("\t%s pre-processed with success, "  % feature_in_pcm, str(LogDataType(x)))
+                        print("\t%s pre-processed with success, " % feature_in_pcm, str(LogDataType(x)))
+
+                # Why is PCA before homogenisation?
 
                 with self._context(this_context + '.3-homogeniser', self._context_args):
                     # Store full array mean and std during fit:
-                    if F>1:
+                    if F > 1:
                         # For more than 1 feature, we need to make them comparable,
                         # so we normalise each features by their global stats:
                         # FIT:
@@ -817,23 +840,27 @@ class pcm(object):
                             self._homogeniser[feature_in_pcm]['std'] = x.std().values
                             # todo _homogeniser should be a proper standard scaler
                         # TRANSFORM:
-                        x = (x-self._homogeniser[feature_in_pcm]['mean'])/\
-                            self._homogeniser[feature_in_pcm]['std']
+                        x = ((x-self._homogeniser[feature_in_pcm]['mean']) /
+                             self._homogeniser[feature_in_pcm]['std'])
                         if self._debug and action == 'fit':
-                            print(("\tHomogenisation for fit of %s") % (feature_in_pcm))
+                            print("\tHomogenisation for fit of %s" % feature_in_pcm)
                         elif self._debug:
-                            print(("\tHomogenisation of %s using fit data") % (feature_in_pcm))
+                            print(("\tHomogenisation of %s using fit data") % feature_in_pcm)
                     elif self._debug:
-                        print(("\tNo need for homogenisation of %s") % (feature_in_pcm))
+                        print("\tNo need for homogenisation of %s" % feature_in_pcm)
 
                 if np.prod(X.shape) == 1:
+                    # Check if there is only one field being investigated.
                     X = x
                     Xlabel = xlabel
+
                 else:
                     X = np.append(X, x, axis=1)
                     [Xlabel.append(i) for i in xlabel]
 
             with self._context(this_context + '.4-xarray', self._context_args):
+                # TODO change xlabel for homogenised PCA
+
                 self._xlabel = Xlabel
 
                 if self._debug:
@@ -853,6 +880,19 @@ class pcm(object):
     def add_pca_to_xarray(self, ds, features=None,
                           dim=None, action='fit',
                           mask=None, inplace=False):
+        """
+        A function to preprocess the fields, fit the pca,
+        and output the pca coefficients to an xarray dataarray object.
+
+        :param ds: :class:`xarray.Dataset` to process
+        :param features: dictionary
+        :param dim: string for dimension along which the model is fitted (e.g. Z)
+        :param action: string to be forwarded to preprocessing function
+        :param mask: mask over dataset
+        :param inplace: whether to add the dataarray to the existing dataset,
+               or just to return the datarray on its own.
+
+        """
         with self._context('fit', self._context_args):
             X, sampling_dims = self.preprocessing(ds, features=features, dim=dim,
                                                   action=action, mask=mask)
