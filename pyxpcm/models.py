@@ -66,6 +66,7 @@ class pcm(object):
                  classif='gmm', covariance_type='full',
                  verb=False,
                  debug=False,
+                 separate_pca=True,
                  timeit=False, timeit_verb=False,
                  chunk_size='auto',
                  backend='sklearn'):
@@ -167,13 +168,22 @@ class pcm(object):
         self._reducer = collections.OrderedDict()
         self._homogeniser = collections.OrderedDict()
 
+        self.separate_pca = separate_pca
+
         # Load estimators for a statistics backend:
         bck = StatisticsBackend(backend, scaler='StandardScaler', reducer='PCA')
 
-        for feature_name in features:
-            feature_axis = self._props['features'][feature_name]
-            if isinstance(feature_axis, xr.DataArray):
-                self._props['features'][feature_name] = feature_axis.values
+        # TODO THIS IS A BAD WAY TO ADD CAPACITY TO PCA together
+
+        features_all = features
+        if not separate_pca:
+            features_all['all'] = 'all'
+
+        for feature_name in features_all:
+            if feature_name != 'all':
+                feature_axis = self._props['features'][feature_name]
+                if isinstance(feature_axis, xr.DataArray):
+                    self._props['features'][feature_name] = feature_axis.values
 
             # self._scaler[feature_name] = preprocessing.StandardScaler(with_mean=with_mean,
             #                                             with_std=with_std)
@@ -752,7 +762,16 @@ class pcm(object):
         # Output:
         return X, sampling_dims
 
-    def preprocessing_that(self, ds, dim=None, features=None, action='?'):
+    def preprocessing_that(self, ds, dim=None, features=None, action='?', mask=None):
+
+        ##### TODO REMOVE
+
+        if not mask:
+            mask = ds.pyxpcm.mask(self, features=features, dim=dim)
+            # Stack all-features mask:
+            mask = mask.stack({'sampling': list(mask.dims)})
+        self._xmask = mask
+        ######## TODO REMOVE
 
         features_dict = ds.pyxpcm.feature_dict(self, features=features)
         x_list = []
@@ -779,16 +798,16 @@ class pcm(object):
             self._scaler['all'].fit(X)
 
         try:
-            X = self._scaler[feature_name].transform(X, copy=False)
+            X = self._scaler['all'].transform(X, copy=False)
         except ValueError:
             if self._debug:
                 print("\t\t Fail to scale.transform without copy, fall back on copy=True")
             try:
-                X = self._scaler[feature_name].transform(X, copy=True)
+                X = self._scaler['all'].transform(X, copy=True)
             except ValueError:
                 if self._debug:
                     print("\t\t Fail to scale.transform with copy, fall back on input copy")
-                X = self._scaler[feature_name].transform(X)
+                X = self._scaler['all'].transform(X)
                 pass
             except:
                 if self._debug:
@@ -813,7 +832,7 @@ class pcm(object):
 
                 self._reducer['all'].fit(X)
 
-        X = self._reducer[feature_name].transform(X.data)
+        X = self._reducer['all'].transform(X.data)
         # Reduction, return np.array
         # After reduction the new array is [ sampling, reduced_dim ]
         X = xr.DataArray(X,
@@ -826,7 +845,7 @@ class pcm(object):
         # Output:
         return X, sampling_dims
 
-    def preprocessing(self, ds, features=None, dim=None, action='?', mask=None, separate_pca=True):
+    def preprocessing(self, ds, features=None, dim=None, action='?', mask=None):
         """ Dataset pre-processing of feature(s)
 
         Depending on pyXpcm set-up, pre-processing steps can be:
@@ -892,7 +911,7 @@ class pcm(object):
                     print("\n\t> Preprocessing xarray dataset '%s' as PCM feature '%s'"
                           % (feature_in_ds, feature_in_pcm))
 
-                if separate_pca:
+                if self.separate_pca:
 
                     if ('maxlevel' in self._context_args) and (self._context_args['maxlevel'] <= 2):
                         a = this_context + '.2-features'
@@ -909,7 +928,7 @@ class pcm(object):
                         if self._debug:
                             print("\t%s pre-processed with success, " % feature_in_pcm, str(LogDataType(x)))
 
-                    # Why is PCA before homogenisation?
+                    # TODO work out why is PCA before homogenisation?
 
                     with self._context(this_context + '.3-homogeniser', self._context_args):
                         # Store full array mean and std during fit:
@@ -944,6 +963,8 @@ class pcm(object):
             else:
                 # TODO if amalgamated
                 print('amalgamated option triggered')
+                X, sampling_dims = self.preprocessing_that(ds, dim=dim, features=features_dict)
+                Xlabel = ["%s%i" % ('PC', i+1) for i in range(0, X.shape[1])]
 
             with self._context(this_context + '.4-xarray', self._context_args):
                 # TODO change xlabel for homogenised PCA
