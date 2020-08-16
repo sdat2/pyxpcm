@@ -509,8 +509,8 @@ class pcm(object):
 
         elif max_dpt == 4:
             tuples = list(zip(*arrays))
-            index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method', 'Sub-sub-method',
-                                                             'Sub-sub-sub-method'])
+            index = pd.MultiIndex.from_tuples(tuples, names=['Method', 'Sub-method',
+                                                             'Sub-sub-method', 'Sub-sub-sub-method'])
             df = pd.Series([np.sum(times[key]) for key in times], index=index)
 
         return df
@@ -551,9 +551,10 @@ class pcm(object):
                                                   len(self._props['features']))]
 
         # PCM core properties:
-        prop_info = ('Number of class: %i') % self._props['K']
+        prop_info = ('Number of class: %i ') % self._props['K']
         summary.append(prop_info)
-        prop_info = ('Number of feature: %i') % len(self._props['features'])
+
+        prop_info = ('Number of feature: %i ') % len(self._props['features'])
         summary.append(prop_info)
 
         prop_info = ('Feature names: %s') % (repr(self._props['features'].keys()))
@@ -601,14 +602,15 @@ class pcm(object):
         # prop_info = ('GMM covariance type: %s') % self._props['COVARTYPE']
         # summary.append(prop_info)
 
-        if (hasattr(self,'fitted')):
-            prop_info = ('\t log likelihood of the training set: %f') % self._props['llh']
+        if hasattr(self, 'fitted'):
+            prop_info = '\t log likelihood of the training set: %f' % self._props['llh']
             summary.append(prop_info)
 
-        if (deep):
+        if deep:
             summary.append("\t Classifier properties:")
             d = self._classifier.get_params(deep=deep)
-            for p in d: summary.append(("\t\t %s: %r")%(p,d[p]))
+            for p in d:
+                summary.append(("\t\t %s: %r")%(p,d[p]))
 
         # Done
         return '\n'.join(summary)
@@ -656,14 +658,14 @@ class pcm(object):
             with self._context(this_context + '.1-ravel', self._context_args):
                 X, z, sampling_dims = self.ravel(da, dim=dim,
                                                  feature_name=feature_name)
-                print(z)
+                # print(z)
                 if self._debug:
                     print("\t", "X RAVELED with success", str(LogDataType(X)))
 
             # INTERPOLATION STEP:
             with self._context(this_context + '.2-interp', self._context_args):
                 X = self._interpoler[feature_name].transform(X, z)
-                print(z)
+                # print(z)
                 if self._debug:
                     if isinstance(self._interpoler[feature_name], NoTransform):
                         print("\t", "X INTERPOLATED with success (NoTransform)", str(LogDataType(X)))
@@ -743,14 +745,88 @@ class pcm(object):
                 X = xr.DataArray(X,
                                  dims=['sampling', 'n_features'],
                                  coords={'sampling': range(0, X.shape[0]),
-                                         'n_features': np.arange(0,X.shape[1])})
+                                         'n_features': np.arange(0, X.shape[1])})
                 if self._debug:
                     print("\t", "X REDUCED with success)", str(LogDataType(X)))
 
         # Output:
         return X, sampling_dims
 
-    def preprocessing(self, ds, features=None, dim=None, action='?', mask=None):
+    def preprocessing_that(self, ds, dim=None, features=None, action='?'):
+
+        features_dict = ds.pyxpcm.feature_dict(self, features=features)
+        x_list = []
+
+        for feature_in_pcm in features_dict:
+            feature_in_ds = features_dict[feature_in_pcm]
+            da = ds[feature_in_ds]
+            feature_name = feature_in_pcm
+            X, z, sampling_dims = self.ravel(da, dim=dim,
+                                             feature_name=feature_name)
+            X = self._interpoler[feature_name].transform(X, z)
+            x_list.append(X.values)
+
+        if len(x_list) == 1:
+            X = x_list[0]
+        else:
+            for i in range(1, len(x_list)):
+                if i == 1:
+                    X = np.append(x_list[i-1], x_list[i], axis=1)
+                else:
+                    X = np.append(X, x_list[i], axis=1)
+
+        if not hasattr(self, 'fitted'):
+            self._scaler['all'].fit(X)
+
+        try:
+            X = self._scaler[feature_name].transform(X, copy=False)
+        except ValueError:
+            if self._debug:
+                print("\t\t Fail to scale.transform without copy, fall back on copy=True")
+            try:
+                X = self._scaler[feature_name].transform(X, copy=True)
+            except ValueError:
+                if self._debug:
+                    print("\t\t Fail to scale.transform with copy, fall back on input copy")
+                X = self._scaler[feature_name].transform(X)
+                pass
+            except:
+                if self._debug:
+                    print(X.flags['WRITEABLE'])
+                raise
+            pass
+        except:
+            raise
+
+        if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
+
+            if self.backend == 'dask_ml':
+                # We have to convert any type of data array into a Dask array because
+                # dask_ml cannot handle anything else (!)
+                X.data = dask.array.asarray(X, chunks=X.shape)
+
+            if isinstance(X.data, dask.array.Array):
+
+                self._reducer['all'].fit(X)
+
+            else:
+
+                self._reducer['all'].fit(X)
+
+        X = self._reducer[feature_name].transform(X.data)
+        # Reduction, return np.array
+        # After reduction the new array is [ sampling, reduced_dim ]
+        X = xr.DataArray(X,
+                         dims=['sampling', 'n_features'],
+                         coords={'sampling': range(0, X.shape[0]),
+                                 'n_features': np.arange(0, X.shape[1])})
+        if self._debug:
+            print("\t", "X REDUCED with success)", str(LogDataType(X)))
+
+        # Output:
+        return X, sampling_dims
+
+    def preprocessing(self, ds, features=None, dim=None, action='?', mask=None, separate_pca=True):
         """ Dataset pre-processing of feature(s)
 
         Depending on pyXpcm set-up, pre-processing steps can be:
@@ -772,6 +848,8 @@ class pcm(object):
         dim: str
             Name of the vertical dimension in the input :class:`xarray.Dataset`
 
+        actions_
+
         Returns
         -------
         X: np.array
@@ -782,6 +860,8 @@ class pcm(object):
 
         """
         this_context = str(action) + '.1-preprocess'
+
+        print(features)
 
         with self._context(this_context, self._context_args):
 
@@ -802,8 +882,8 @@ class pcm(object):
 
             # Pre-process all features and build the X array
             X = np.empty(())
-            Xlabel = list() # Construct a list of string labels for each feature dimension (useful for plots)
-            F = self.F # Nb of features
+            Xlabel = list()  # Construct a list of string labels for each feature dimension (useful for plots)
+            F = self.F  # Nb of features
 
             for feature_in_pcm in features_dict:
                 # TODO amalgamation function needs to be introduced here, and fed into preprocess this.
@@ -812,51 +892,58 @@ class pcm(object):
                     print("\n\t> Preprocessing xarray dataset '%s' as PCM feature '%s'"
                           % (feature_in_ds, feature_in_pcm))
 
-                if ('maxlevel' in self._context_args) and (self._context_args['maxlevel'] <= 2):
-                    a = this_context + '.2-features'
-                else:
-                    a = this_context
-                with self._context(a, self._context_args):
-                    da = ds[feature_in_ds]
-                    # PREPROCESS THIS FUNCTION CALLED FROM HERE
-                    x, sampling_dims = self.preprocessing_this(da,
-                                                               dim=dim,
-                                                               feature_name=feature_in_pcm,
-                                                               action=action)
-                    xlabel = ["%s_%i" % (feature_in_pcm, i) for i in range(0, x.shape[1])]
-                    if self._debug:
-                        print("\t%s pre-processed with success, " % feature_in_pcm, str(LogDataType(x)))
+                if separate_pca:
 
-                # Why is PCA before homogenisation?
+                    if ('maxlevel' in self._context_args) and (self._context_args['maxlevel'] <= 2):
+                        a = this_context + '.2-features'
+                    else:
+                        a = this_context
+                    with self._context(a, self._context_args):
+                        da = ds[feature_in_ds]
+                        # PREPROCESS THIS FUNCTION CALLED FROM HERE
+                        x, sampling_dims = self.preprocessing_this(da,
+                                                                   dim=dim,
+                                                                   feature_name=feature_in_pcm,
+                                                                   action=action)
+                        xlabel = ["%s_%i" % (feature_in_pcm, i) for i in range(0, x.shape[1])]
+                        if self._debug:
+                            print("\t%s pre-processed with success, " % feature_in_pcm, str(LogDataType(x)))
 
-                with self._context(this_context + '.3-homogeniser', self._context_args):
-                    # Store full array mean and std during fit:
-                    if F > 1:
-                        # For more than 1 feature, we need to make them comparable,
-                        # so we normalise each features by their global stats:
-                        # FIT:
-                        if (action == 'fit') or (action == 'fit_predict'):
-                            self._homogeniser[feature_in_pcm]['mean'] = x.mean().values
-                            self._homogeniser[feature_in_pcm]['std'] = x.std().values
-                            # todo _homogeniser should be a proper standard scaler
-                        # TRANSFORM:
-                        x = ((x-self._homogeniser[feature_in_pcm]['mean']) /
-                             self._homogeniser[feature_in_pcm]['std'])
-                        if self._debug and action == 'fit':
-                            print("\tHomogenisation for fit of %s" % feature_in_pcm)
+                    # Why is PCA before homogenisation?
+
+                    with self._context(this_context + '.3-homogeniser', self._context_args):
+                        # Store full array mean and std during fit:
+                        if F > 1:
+                            # For more than 1 feature, we need to make them comparable,
+                            # so we normalise each features by their global stats:
+
+                            # FIT:
+                            if (action == 'fit') or (action == 'fit_predict'):
+                                self._homogeniser[feature_in_pcm]['mean'] = x.mean().values
+                                self._homogeniser[feature_in_pcm]['std'] = x.std().values
+                                # todo _homogeniser should be a proper standard scaler
+
+                            # TRANSFORM:
+                            x = ((x-self._homogeniser[feature_in_pcm]['mean']) /
+                                 self._homogeniser[feature_in_pcm]['std'])
+                            if self._debug and action == 'fit':
+                                print("\tHomogenisation for fit of %s" % feature_in_pcm)
+                            elif self._debug:
+                                print("\tHomogenisation of %s using fit data" % feature_in_pcm)
                         elif self._debug:
-                            print(("\tHomogenisation of %s using fit data") % feature_in_pcm)
-                    elif self._debug:
-                        print("\tNo need for homogenisation of %s" % feature_in_pcm)
+                            print("\tNo need for homogenisation of %s" % feature_in_pcm)
 
-                if np.prod(X.shape) == 1:
-                    # Check if there is only one field being investigated.
-                    X = x
-                    Xlabel = xlabel
+                    if np.prod(X.shape) == 1:
+                        # Check if there is only one field being investigated.
+                        X = x
+                        Xlabel = xlabel
 
-                else:
-                    X = np.append(X, x, axis=1)
-                    [Xlabel.append(i) for i in xlabel]
+                    else:
+                        X = np.append(X, x, axis=1)
+                        [Xlabel.append(i) for i in xlabel]
+            else:
+                # TODO if amalgamated
+                print('amalgamated option triggered')
 
             with self._context(this_context + '.4-xarray', self._context_args):
                 # TODO change xlabel for homogenised PCA
@@ -874,7 +961,9 @@ class pcm(object):
             if self._debug:
                 print("> Preprocessing done, working with final X (%s) array of shape:"
                       % type(X), X.shape,
-                      " and sampling dimensions:", sampling_dims)
+                      " and sampling dimensions:",
+                      sampling_dims)
+
         return X, sampling_dims
 
     def add_pca_to_xarray(self, ds, features=None,
@@ -1189,6 +1278,7 @@ class pcm(object):
 
             # Create a xarray with posteriors:
             with self._context('predict_proba.xarray', self._context_args):
+
                 P = list()
                 for k in range(self.K):
                     X = post_values[:, k]
@@ -1211,9 +1301,9 @@ class pcm(object):
     def find_i_metric(self, ds, features=None, dim=None, inplace=False,
                       name='PCM_I', classdimname='pcm_class'):
         """
-        >>> from math import comb
-        >>> for i in range(2, 10):
-        ...     comb(i, 2)
+        from math import comb
+        for i in range(2, 10):
+            comb(i, 2)
         1
         3
         6
@@ -1232,9 +1322,7 @@ class pcm(object):
 
         with self._context('predict_prob', self._context_args):
 
-            import numpy as np
-
-            # Check if the PCM is trained:
+            # Check if the PCM is trained: w
             validation.check_is_fitted(self, 'fitted')
 
             # PRE-PROCESSING:
@@ -1254,6 +1342,7 @@ class pcm(object):
 
             # Create a xarray with posteriors:
             with self._context('predict_proba.xarray', self._context_args):
+
                 P = []
                 for k in range(self.K):
                     X = post_values[:, k]
@@ -1352,8 +1441,8 @@ class pcm(object):
 
             # Check classifier:
             if self._props['with_classifier'] != 'gmm':
-                raise Exception( ("BIC is only available for the 'gmm' classifier ('%s')")%\
-                                 (self._props['with_classifier']) )
+                raise Exception("BIC is only available for the 'gmm' classifier ('%s')" %
+                                 self._props['with_classifier'])
 
             def _n_parameters(_classifier):
                 """Return the number of free parameters in the model. See sklearn code"""
