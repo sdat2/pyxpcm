@@ -762,16 +762,7 @@ class pcm(object):
         # Output:
         return X, sampling_dims
 
-    def preprocessing_that(self, ds, dim=None, features=None, action='?', mask=None):
-
-        ##### TODO REMOVE
-
-        if not mask:
-            mask = ds.pyxpcm.mask(self, features=features, dim=dim)
-            # Stack all-features mask:
-            mask = mask.stack({'sampling': list(mask.dims)})
-        self._xmask = mask
-        ######## TODO REMOVE
+    def preprocessing_that(self, ds, dim=None, features=None, action='?', ):
 
         features_dict = ds.pyxpcm.feature_dict(self, features=features)
         x_list = []

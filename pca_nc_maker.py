@@ -5,7 +5,7 @@ import pyxpcm
 from pyxpcm.models import pcm
 # ln -s /Volumes/BSOSE-DISC/bsose_monthly bsose_monthly
 
-def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False):
+def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False, separate_pca=True):
     # Define features to use
     # Instantiate the PCM
     main_dir = '/Users/simon/bsose_monthly/'
@@ -37,9 +37,11 @@ def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False):
         ds = both_nc
 
     m = pcm(K=K, features=features_pcm,
+            separate_pca=separate_pca,
             maxvar=maxvar,
             timeit=True, timeit_verb=1)
-    ds = m.add_pca_to_xarray(ds, features=features, dim='Z', inplace=True)
+    ds = m.add_pca_to_xarray(ds, features=features,
+                             dim='Z', inplace=True)
 
     #m.fit(ds, features=features, dim='Z') #, inplace=True)
     #m.predict(ds, features=features, dim='Z', inplace=True)
@@ -62,18 +64,30 @@ def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False):
     ds = ds.expand_dims(dim='time', axis=None)
 
     ds = ds.assign_coords({"time":
-                ("time", [salt_nc.coords['time'].values])})
+                           ("time",
+                            [salt_nc.coords['time'].values])})
 
     ds.coords['time'].attrs = salt_nc.coords['time'].attrs
 
-
-    ds.to_netcdf('nc/pca/'+str(time_i)+'.nc', format='NETCDF4')
-    m.to_netcdf('nc/m_pca/'+str(time_i)+'.nc')
+    if separate_pca:
+        ds.to_netcdf('nc/pca/' + str(time_i) + '.nc', format='NETCDF4')
+        m.to_netcdf('nc/m_pca/' + str(time_i) + '.nc')
+    else:
+        ds.to_netcdf('nc/pc-joint/' + str(time_i) + '.nc', format='NETCDF4')
+        m.to_netcdf('nc/pc-joint-m/' + str(time_i) + '.nc')
 
 
 def run_through_pca():
     for time_i in range(60):
         pcm_pca_out(time_i=time_i)
+
+
+def run_through_joint():
+    for time_i in range(60):
+        pcm_pca_out(time_i=time_i, separate_pca=False)
+
+
+run_through_joint()
 
 
 def merge_whole_density_netcdf():
