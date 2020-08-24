@@ -5,14 +5,84 @@ import pyxpcm
 from pyxpcm.models import pcm
 # ln -s /Volumes/BSOSE-DISC/bsose_monthly bsose_monthly
 
-def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False, separate_pca=True):
+
+def train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300, max_depth=2000, separate_pca=True):
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+    z = np.arange(-min_depth, -max_depth, -10.)
+    features_pcm = {'THETA': z, 'SALT': z}
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
+    salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i+12))
+    theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i+12))
+    big_nc = xr.merge([salt_nc, theta_nc])
+    both_nc = big_nc.where(big_nc.coords['Depth'] >
+                           max_depth).drop(['iter', 'Depth',
+                                            'rA', 'drF', 'hFacC'])
+
+    lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60*4)
+    lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
+    ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new}) #, method='cubic')
+
+    m = pcm(K=K, features=features_pcm,
+            separate_pca=separate_pca,
+            maxvar=maxvar,
+            timeit=True, timeit_verb=1)
+    ds = m.add_pca_to_xarray(ds, features=features,
+                             dim='Z', inplace=True)
+
+    return m
+
+
+def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
+    salt_nc = xr.open_dataset(salt).isel(time=time_i)
+    theta_nc = xr.open_dataset(theta).isel(time=time_i)
+    big_nc = xr.merge([salt_nc, theta_nc])
+    both_nc = big_nc.where(big_nc.coords['Depth'] >
+                           max_depth).drop(['iter', 'Depth',
+                                            'rA', 'drF', 'hFacC'])
+
+    attr_d = {}
+
+    for coord in both_nc.coords:
+        attr_d[coord] = both_nc.coords[coord].attrs
+
+    ds = both_nc
+
+    ds = m.add_pca_to_xarray(ds, features=features,
+                             dim='Z', inplace=True)
+
+    def sanitize():
+        del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']
+
+    for coord in attr_d:
+        ds.coords[coord].attrs = attr_d[coord]
+
+    sanitize()
+
+    ds = ds.drop(['SALT', 'THETA'])
+
+    ds = ds.expand_dims(dim='time', axis=None)
+
+    ds = ds.assign_coords({"time":
+                           ("time",
+                            [salt_nc.coords['time'].values])})
+
+    ds.coords['time'].attrs = salt_nc.coords['time'].attrs
+
+    ds.to_netcdf('nc/pc-joint/' + str(time_i) + '.nc', format='NETCDF4')
+
+
+def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, max_depth=2000, interp=False, separate_pca=True):
     # Define features to use
     # Instantiate the PCM
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
-
-    max_depth = 2000
     z = np.arange(-min_depth, -max_depth, -10.)
     features_pcm = {'THETA': z, 'SALT': z}
     features = {'THETA': 'THETA', 'SALT': 'SALT'}
@@ -42,11 +112,6 @@ def pcm_pca_out(time_i=42, K=4, maxvar=2, min_depth=300, interp=False, separate_
             timeit=True, timeit_verb=1)
     ds = m.add_pca_to_xarray(ds, features=features,
                              dim='Z', inplace=True)
-
-    #m.fit(ds, features=features, dim='Z') #, inplace=True)
-    #m.predict(ds, features=features, dim='Z', inplace=True)
-    #m.predict_proba(ds, features=features, dim='Z', inplace=True)
-    #m.find_i_metric(ds, inplace=True)
 
     def sanitize():
         #    del ds.PCM_LABELS.attrs['_pyXpcm_cleanable']
@@ -87,7 +152,16 @@ def run_through_joint():
         pcm_pca_out(time_i=time_i, separate_pca=False)
 
 
-run_through_joint()
+def run_through_joint_two():
+    m = train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
+                                   max_depth=2000, separate_pca=False)
+    for time_i in range(60):
+        pca_from_interpolated_year(m, time_i=time_i)
+
+
+run_through_joint_two()
+
+# run_through_joint()
 
 
 def merge_whole_density_netcdf():
@@ -116,8 +190,6 @@ def take_derivative_pca(dimension="YC", typ='float32'):
     chunk_d = {'time': 1, 'YC': 588, 'XC': 2160}
 
     density_ds = xr.open_mfdataset('nc/pcm_pca.nc',
-                                   # engine=engine,
-                                   # decode_cf=False,
                                    chunks=chunk_d,
                                    combine='by_coords',
                                    data_vars='minimal',
@@ -127,14 +199,10 @@ def take_derivative_pca(dimension="YC", typ='float32'):
                                    ).astype(typ)
 
     grad_da = density_ds.PCA_VALUES.differentiate(dimension)
-    #.astype(typ).chunk(chunks=chunk_d)
-
     name = 'PC_Gradient_' + dimension
     grad_ds = grad_da.to_dataset().rename_vars({'PCA_VALUES': name})
     grad_ds[name].attrs['long_name'] = 'PC Gradient ' + dimension
     grad_ds[name].attrs['units'] = 'box-1'
-
-    # .astype(typ).chunk(chunks=chunk_d)
     xr.save_mfdataset([grad_ds],
                       ['nc/pc_grad_' + dimension + '.nc'],
                       format='NETCDF4')
@@ -147,3 +215,20 @@ def go_through_all():
     save_density_netcdf(pca_ds)
     take_derivative_pca()
     take_derivative_pca(dimension="XC")
+
+
+def merge_and_save_joint():
+
+    pca_ds = xr.open_mfdataset('nc/pc-joint/*.nc',
+                               concat_dim="time",
+                               combine='by_coords',
+                               chunks={'time': 1},
+                               data_vars='minimal',
+                               # parallel=True,
+                               coords='minimal',
+                               compat='override')   # this is too intense for memory
+
+    xr.save_mfdataset([pca_ds], ['nc/pcm_pca_joint.nc'], format='NETCDF4')
+
+
+# merge_and_save_joint()

@@ -591,7 +591,8 @@ class pcm(object):
             if (deep):
                 # summary.append("\t\t Scaler properties:")
                 d = self._scaler[feature].get_params(deep=deep)
-                for p in d: summary.append(("\t\t %s: %r")%(p,d[p]))
+                for p in d:
+                    summary.append(("\t\t %s: %r")%(p,d[p]))
 
             # prop_info = ('\t Dimensionality Reduction: %r') %
             # summary.append(prop_info)
@@ -953,7 +954,6 @@ class pcm(object):
                         [Xlabel.append(i) for i in xlabel]
             else:
                 # TODO if amalgamated
-                print('amalgamated option triggered')
                 X, sampling_dims = self.preprocessing_that(ds, dim=dim, features=features_dict)
                 Xlabel = ["%s%i" % ('PC', i+1) for i in range(0, X.shape[1])]
 
@@ -1375,7 +1375,6 @@ class pcm(object):
                     P.append(x)
 
                 da_rank = xr.concat(P, dim=classdimname).rename('PCM_RANK')
-                # .astype(int)
                 da_rank.attrs['long_name'] = 'PCM Rank'
                 da_rank.attrs['units'] = ''
                 da_rank.attrs['valid_min'] = 0

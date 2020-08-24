@@ -61,9 +61,11 @@ def axes_style(style="white"):
     else: # Otherwise do nothing
         yield
 
+
 def cmap_robustess():
     """ Return a categorical colormap for robustness """
     return mpl.colors.ListedColormap(['#FF0000', '#CC00FF', '#0066FF', '#CCFF00', '#00FF66'])
+
 
 def cmap_discretize(name, K):
     """Return a discrete colormap from a quantitative or continuous colormap name
@@ -102,6 +104,7 @@ def cmap_discretize(name, K):
         new_cmap = mcolors.LinearSegmentedColormap(cmap.name + "_%d" % N, cdict, N)
     return new_cmap
 
+
 def colorbar_index(ncolors, name='Set1', **kwargs):
     """Adjust colorbar ticks with discrete colors"""
     cmap = cmap_discretize(name, ncolors)
@@ -112,6 +115,7 @@ def colorbar_index(ncolors, name='Set1', **kwargs):
     colorbar.set_ticks(np.linspace(0, ncolors, ncolors))
     colorbar.set_ticklabels(range(ncolors))
     return colorbar
+
 
 def latlongrid(ax, dx=5., dy=5., fontsize=6, **kwargs):
     """ Add latitude/longitude grid line and labels to a cartopy geoaxes  """
@@ -128,6 +132,7 @@ def latlongrid(ax, dx=5., dy=5., fontsize=6, **kwargs):
     gl.ylabels_right = False
     gl.ylabel_style = {'fontsize':fontsize}
     return gl
+
 
 def cmap(m, name, palette=False, usage='class'):
     """Return categorical colormaps
@@ -169,6 +174,7 @@ def cmap(m, name, palette=False, usage='class'):
         raise ValueError("Unknown 'usage' value (%s) " % usage)
     return c
 
+
 def colorbar(m, cmap=None, **kwargs):
     """Add a colorbar to the current plot with centered ticks on discrete colors
 
@@ -188,6 +194,7 @@ def colorbar(m, cmap=None, **kwargs):
         cmap = _PlotMethods(m).cmap() # Load default colormap
     z = { **{'fraction':0.03, 'label':'Class'}, **kwargs}
     return colorbar_index(ncolors=m.K, cmap=cmap, **z)
+
 
 def subplots(m, maxcols=3, K=np.Inf, subplot_kw=None, **kwargs):
     """ Return (figure, axis) with one subplot per cluster
@@ -243,6 +250,7 @@ def subplots(m, maxcols=3, K=np.Inf, subplot_kw=None, **kwargs):
     for i in range(K, nrows * ncols):
         fig.delaxes(ax[i])
     return fig, ax
+
 
 def timeit(m, group='Method', split='Sub-method', subplot_kw=None, style='white', unit='ms', **kwargs):
     """ Plot PCM registered timing of operations
@@ -316,6 +324,7 @@ def timeit(m, group='Method', split='Sub-method', subplot_kw=None, style='white'
 
     return fig, ax, df
 
+
 def preprocessed(m, ds, features=None, dim=None, n=1000, kde=False, style='darkgrid', **kargs):
     """ Plot preprocessed features as pairwise scatter plots
 
@@ -370,6 +379,7 @@ def preprocessed(m, ds, features=None, dim=None, n=1000, kde=False, style='darkg
             g = g.map_diag(sns.kdeplot, lw=2, legend=False)
         g = g.add_legend()
     return g
+
 
 def scaler(m, style="whitegrid", plot_kw=None, subplot_kw=None, **kwargs):
     """Plot PCM scalers properties
@@ -427,6 +437,7 @@ def scaler(m, style="whitegrid", plot_kw=None, subplot_kw=None, **kwargs):
 
     return fig, ax
 
+
 def reducer(m, pcalist=None, style="whitegrid", maxcols=np.Inf, plot_kw=None, subplot_kw=None, **kwargs):
     """ Plot PCM reducers properties """
 
@@ -478,6 +489,7 @@ def reducer(m, pcalist=None, style="whitegrid", maxcols=np.Inf, plot_kw=None, su
                 ax[icol].set_title('Unknown reducer for %s !' % feature, fontsize=10)
 
     return fig, ax
+
 
 def quantile(m, da, xlim=None,
           classdimname='pcm_class',
