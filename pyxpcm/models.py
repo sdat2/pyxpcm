@@ -811,6 +811,10 @@ class pcm(object):
 
         if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
 
+            print('Fitting PCA')
+
+            self._props['with_reducer'] = False
+
             if self.backend == 'dask_ml':
                 # We have to convert any type of data array into a Dask array because
                 # dask_ml cannot handle anything else (!)
@@ -872,7 +876,7 @@ class pcm(object):
         """
         this_context = str(action) + '.1-preprocess'
 
-        print(features)
+        # print(features)
 
         with self._context(this_context, self._context_args):
 

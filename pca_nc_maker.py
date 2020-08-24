@@ -155,6 +155,9 @@ def run_through_joint():
 def run_through_joint_two():
     m = train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
                                    max_depth=2000, separate_pca=False)
+
+    m.to_netcdf('nc/pc-joint-m.nc')
+
     for time_i in range(60):
         pca_from_interpolated_year(m, time_i=time_i)
 
