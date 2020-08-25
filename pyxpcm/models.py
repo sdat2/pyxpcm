@@ -169,6 +169,7 @@ class pcm(object):
         self._homogeniser = collections.OrderedDict()
 
         self.separate_pca = separate_pca
+        self.fitted = False
 
         # Load estimators for a statistics backend:
         bck = StatisticsBackend(backend, scaler='StandardScaler', reducer='PCA')
@@ -255,7 +256,7 @@ class pcm(object):
             if name in self._timeit:
                 self._timeit[name].append(elapsedTime * 1000)
             else:
-                self._timeit[name] = list([elapsedTime*1000])
+                self._timeit[name] = list([elapsedTime * 1000])
         else:
             yield
 
@@ -764,79 +765,90 @@ class pcm(object):
         return X, sampling_dims
 
     def preprocessing_that(self, ds, dim=None, features=None, action='?', ):
+        this_context_0 = str(action) + '.1-preprocess.2-feature_'
 
         features_dict = ds.pyxpcm.feature_dict(self, features=features)
         x_list = []
 
         for feature_in_pcm in features_dict:
-            feature_in_ds = features_dict[feature_in_pcm]
-            da = ds[feature_in_ds]
-            feature_name = feature_in_pcm
-            X, z, sampling_dims = self.ravel(da, dim=dim,
-                                             feature_name=feature_name)
-            X = self._interpoler[feature_name].transform(X, z)
-            x_list.append(X.values)
+            this_context = this_context_0 + feature_in_pcm
+            with self._context(this_context + '.total', self._context_args):
+                feature_in_ds = features_dict[feature_in_pcm]
+                da = ds[feature_in_ds]
+                feature_name = feature_in_pcm
+                with self._context(this_context + '.1-ravel', self._context_args):
+                    X, z, sampling_dims = self.ravel(da, dim=dim,
+                                                     feature_name=feature_name)
+                with self._context(this_context + '.2-interp', self._context_args):
+                    X = self._interpoler[feature_name].transform(X, z)
 
-        if len(x_list) == 1:
-            X = x_list[0]
-        else:
-            for i in range(1, len(x_list)):
-                if i == 1:
-                    X = np.append(x_list[i-1], x_list[i], axis=1)
-                else:
-                    X = np.append(X, x_list[i], axis=1)
+                with self._context(this_context + '.3-scale_fit', self._context_args):
+                    if not hasattr(self, 'fitted'):
+                        self._scaler[feature_in_pcm].fit(X.values)
 
-        if not hasattr(self, 'fitted'):
-            self._scaler['all'].fit(X)
+                with self._context(this_context + '.4-scale_transform', self._context_args):
+                    try:
+                        X = self._scaler[feature_in_pcm].transform(X.values, copy=False)
+                    except ValueError:
+                        if self._debug:
+                            print("\t\t Fail to scale.transform without copy, fall back on copy=True")
+                        try:
+                            X = self._scaler[feature_in_pcm].transform(X.values, copy=True)
+                        except ValueError:
+                            if self._debug:
+                                print("\t\t Fail to scale.transform with copy, fall back on input copy")
+                            X = self._scaler[feature_in_pcm].transform(X.values)
+                            pass
+                        except:
+                            if self._debug:
+                                print(X.flags['WRITEABLE'])
+                            raise
+                        pass
+                    except:
+                        raise
 
-        try:
-            X = self._scaler['all'].transform(X, copy=False)
-        except ValueError:
-            if self._debug:
-                print("\t\t Fail to scale.transform without copy, fall back on copy=True")
-            try:
-                X = self._scaler['all'].transform(X, copy=True)
-            except ValueError:
-                if self._debug:
-                    print("\t\t Fail to scale.transform with copy, fall back on input copy")
-                X = self._scaler['all'].transform(X)
-                pass
-            except:
-                if self._debug:
-                    print(X.flags['WRITEABLE'])
-                raise
-            pass
-        except:
-            raise
+                x_list.append(X)
 
-        if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
+        this_context = this_context_0 + 'all'
 
-            print('Fitting PCA')
-
-            self._props['with_reducer'] = False
-
-            if self.backend == 'dask_ml':
-                # We have to convert any type of data array into a Dask array because
-                # dask_ml cannot handle anything else (!)
-                X.data = dask.array.asarray(X, chunks=X.shape)
-
-            if isinstance(X.data, dask.array.Array):
-
-                self._reducer['all'].fit(X)
-
+        with self._context(this_context + '.5-join', self._context_args):
+            if len(x_list) == 1:
+                X = x_list[0]
             else:
+                for i in range(1, len(x_list)):
+                    if i == 1:
+                        X = np.append(x_list[i - 1], x_list[i], axis=1)
+                    else:
+                        X = np.append(X, x_list[i], axis=1)
 
-                self._reducer['all'].fit(X)
+        with self._context(this_context + '.6-reduce_fit', self._context_args):
+            if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
 
-        X = self._reducer['all'].transform(X.data)
-        # Reduction, return np.array
-        # After reduction the new array is [ sampling, reduced_dim ]
-        X = xr.DataArray(X,
-                         dims=['sampling', 'n_features'],
-                         coords={'sampling': range(0, X.shape[0]),
-                                 'n_features': np.arange(0, X.shape[1])})
-        if self._debug:
-            print("\t", "X REDUCED with success)", str(LogDataType(X)))
+                print('Fitting PCA')
+
+                if self.backend == 'dask_ml':
+                    # We have to convert any type of data array into a Dask array because
+                    # dask_ml cannot handle anything else (!)
+                    X.data = dask.array.asarray(X, chunks=X.shape)
+
+                if isinstance(X.data, dask.array.Array):
+
+                    self._reducer['all'].fit(X)
+
+                else:
+
+                    self._reducer['all'].fit(X)
+
+        with self._context(this_context + '.7-reduce_transform', self._context_args):
+            X = self._reducer['all'].transform(X.data)
+            # Reduction, return np.array
+            # After reduction the new array is [ sampling, reduced_dim ]
+            X = xr.DataArray(X,
+                             dims=['sampling', 'n_features'],
+                             coords={'sampling': range(0, X.shape[0]),
+                                     'n_features': np.arange(0, X.shape[1])})
+            if self._debug:
+                print("\t", "X REDUCED with success)", str(LogDataType(X)))
 
         # Output:
         return X, sampling_dims
@@ -958,19 +970,19 @@ class pcm(object):
                         [Xlabel.append(i) for i in xlabel]
             else:
                 # TODO if amalgamated
-                X, sampling_dims = self.preprocessing_that(ds, dim=dim, features=features_dict)
+                X, sampling_dims = self.preprocessing_that(ds, dim=dim, features=features_dict, action=action)
                 Xlabel = ["%s%i" % ('PC', i+1) for i in range(0, X.shape[1])]
 
             with self._context(this_context + '.4-xarray', self._context_args):
                 # TODO change xlabel for homogenised PCA
-
                 self._xlabel = Xlabel
 
                 if self._debug:
                     print("\tFeatures array shape and type for xarray:",
                           X.shape, type(X), type(X.data))
 
-                X = xr.DataArray(X, dims=['n_samples', 'n_features'],
+                X = xr.DataArray(X,
+                                 dims=['n_samples', 'n_features'],
                                  coords={'n_samples': range(0, X.shape[0]),
                                          'n_features': Xlabel})
 
@@ -1016,6 +1028,9 @@ class pcm(object):
             da.attrs['n_features'] = n_features
 
         # Add posteriors to the dataset:
+
+        self.fitted = True
+
         if inplace:
             return ds.pyxpcm.add(da)
         else:
@@ -1049,7 +1064,7 @@ class pcm(object):
         -------
         self
         """
-        with self._context('fit', self._context_args) :
+        with self._context('fit', self._context_args):
             # PRE-PROCESSING:
             X, sampling_dims = self.preprocessing(ds, features=features,
                                                   dim=dim, action='fit')
