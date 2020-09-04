@@ -142,7 +142,7 @@ class pcm(object):
         if classif=='gmm': with_classifier = 'gmm';
         else: raise NameError("classifier must be 'gmm' (no other methods implemented at this time)")
 
-        #todo check validity of the dict of features
+        # todo check validity of the dict of features
 
         self._props = {'K': np.int(K),
                        'F': len(features),
@@ -159,7 +159,7 @@ class pcm(object):
         self._xmask = None # xarray mask for nd-array used at pre-processing steps
         self._register = collections.OrderedDict() # Will register mutable instances of sub-modules like 'plot'
 
-        self._verb = verb #todo _verb is a property, should be set/get with a decorator
+        self._verb = verb  # todo _verb is a property, should be set/get with a decorator
         self._debug = debug
 
         self._interpoler = collections.OrderedDict()
@@ -693,7 +693,7 @@ class pcm(object):
 
             # SCALING:
             with self._context(this_context + '.3-scale_fit', self._context_args):
-                if not hasattr(self, 'fitted'):
+                if not self.fitted:
                     # if not fitted then call _scaler[feature_name] (an ordered dict containing)
                     self._scaler[feature_name].fit(X.data)
                     if 'units' in da.attrs:
@@ -728,7 +728,7 @@ class pcm(object):
 
             # Fit PCA if not already fitted:
             with self._context(this_context + '.5-reduce_fit', self._context_args):
-                if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
+                if not self.fitted and (self._props['with_reducer']):
 
                     if self.backend == 'dask_ml':
                         # We have to convert any type of data array into a Dask array because
@@ -783,7 +783,9 @@ class pcm(object):
                     X = self._interpoler[feature_name].transform(X, z)
 
                 with self._context(this_context + '.3-scale_fit', self._context_args):
-                    if not hasattr(self, 'fitted'):
+                    # if not hasattr(self, 'fitted'):
+                    # print('fitting called')
+                    if not self.fitted:
                         self._scaler[feature_in_pcm].fit(X.values)
 
                 with self._context(this_context + '.4-scale_transform', self._context_args):
@@ -822,7 +824,7 @@ class pcm(object):
                         X = np.append(X, x_list[i], axis=1)
 
         with self._context(this_context + '.6-reduce_fit', self._context_args):
-            if (not hasattr(self, 'fitted')) and (self._props['with_reducer']):
+            if not self.fitted and (self._props['with_reducer']):
 
                 print('Fitting PCA')
 

@@ -156,13 +156,13 @@ def run_through_joint_two():
     m = train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
                                    max_depth=2000, separate_pca=False)
 
-    m.to_netcdf('nc/pc-joint-m.nc')
+    # m.to_netcdf('nc/pc-joint-m.nc')
 
     for time_i in range(60):
         pca_from_interpolated_year(m, time_i=time_i)
 
 
-run_through_joint_two()
+# run_through_joint_two()
 
 # run_through_joint()
 
@@ -235,3 +235,30 @@ def merge_and_save_joint():
 
 
 # merge_and_save_joint()
+
+
+def take_derivative_pca_joint(dimension="YC", typ='float32'):
+
+    chunk_d = {'time': 1, 'YC': 588, 'XC': 2160}
+
+    density_ds = xr.open_mfdataset('nc/pcm_pca_joint.nc',
+                                   chunks=chunk_d,
+                                   combine='by_coords',
+                                   data_vars='minimal',
+                                   coords='minimal',
+                                   compat='override',
+                                   parallel=True
+                                   ).astype(typ)
+
+    grad_da = density_ds.PCA_VALUES.differentiate(dimension)
+    name = 'PC_Gradient_' + dimension
+    grad_ds = grad_da.to_dataset().rename_vars({'PCA_VALUES': name})
+    grad_ds[name].attrs['long_name'] = 'PC Gradient ' + dimension
+    grad_ds[name].attrs['units'] = 'box-1'
+    xr.save_mfdataset([grad_ds],
+                      ['nc/pc_joint_grad_' + dimension + '.nc'],
+                      format='NETCDF4')
+
+
+take_derivative_pca(dimension="YC")
+take_derivative_pca(dimension="XC")
