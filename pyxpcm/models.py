@@ -45,11 +45,14 @@ from sklearn.exceptions import NotFittedError
 # http://scikit-learn.org/stable/modules/mixture.html
 from sklearn.mixture import GaussianMixture
 
+
 class PCMFeatureError(Exception):
     """Exception raised when features not correct"""
 
+
 class PCMClassError(Exception):
     """Exception raised when classes not correct"""
+
 
 class pcm(object):
     """Profile Classification Model class constructor
@@ -352,7 +355,7 @@ class pcm(object):
 
             sampling_dims = list(da.dims)
             sampling_dims.remove(dim)
-            X = da.stack({'sampling': sampling_dims}) #todo Improve performance for this operation !
+            X = da.stack({'sampling': sampling_dims})  # todo Improve performance for this operation !
             # Apply all-features mask:
             X = X.where(mask_stacked == 1, drop=True).transpose()
             z = da[dim].values
