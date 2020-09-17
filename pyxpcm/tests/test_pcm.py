@@ -6,6 +6,7 @@ import numpy as np
 import xarray as xr
 import pytest
 
+
 def test_pcm_init_req():
     """Test PCM default instantiation with required arguments"""
     pcm_features_list = (
@@ -36,6 +37,7 @@ def test_pcm_init_req():
         m = pcm(K=1, features=pcm_features_list[0])
         if not hasattr(m, 'fitted'):
             raise NotFittedError
+
 
 def test_pcm_init_opt():
     """Test PCM instantiation with optional arguments"""

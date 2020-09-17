@@ -1334,6 +1334,8 @@ class pcm(object):
     def find_i_metric(self, ds, features=None, dim=None, inplace=False,
                       name='PCM_I', classdimname='pcm_class'):
         """
+        TODO this still needs to be fixd, and a compatabilte plotting function added.
+
         from math import comb
         for i in range(2, 10):
             comb(i, 2)
@@ -1450,6 +1452,8 @@ class pcm(object):
            the current model on the input dataset
 
         Only for a GMM classifier
+
+        TODO Test if this is different from sklearn version.
 
         Parameters
         ----------
