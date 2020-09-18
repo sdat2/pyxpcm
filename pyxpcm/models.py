@@ -1411,7 +1411,7 @@ class pcm(object):
                 x = self.unravel(ds, sampling_dims, ic_metric)
                 P.append(x)
 
-                da = xr.concat(P, dim='i-metric').rename('I_METRIC')
+                da = xr.concat(P, dim='Imetric').rename('IMETRIC')
                 da.attrs['long_name'] = 'I metric'  # '$\mathcal{I}$--metric'
                 da.attrs['units'] = ''
                 da.attrs['valid_min'] = 0
