@@ -1352,6 +1352,27 @@ class pcm(object):
         36
         """
 
+        def get_i_metric(posterior_prob_list):
+            """
+            :return: gmm_profile list:
+            :return: gmm: the gmm object to save.
+            """
+            if np.nan not in posterior_prob_list:
+
+                sorted_posterior_list = sorted(posterior_prob_list)
+
+                ic_metric = 1 - (sorted_posterior_list[-1] - sorted_posterior_list[-2])
+
+                runner_up_label = posterior_prob_list.index(sorted_posterior_list[-2])
+
+                label = posterior_prob_list.index(sorted_posterior_list[-1])
+
+                return ic_metric, np.array([label, runner_up_label])
+
+            else:
+
+                return np.nan, np.array([np.nan, np.nan])
+
         list = [i for i in range(self.K)]
 
         cart_prod = [(a, b) for a in list for b in list if a >= b]
@@ -1372,42 +1393,47 @@ class pcm(object):
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):
                 post_values = self._classifier.predict_proba(X)
-                rank = np.negative(post_values).argsort()
-                print(np.shape(rank))
 
             # with self._context('predict_proba.score', self._context_args):
             #    self._props['llh'] = self._classifier.score(X)
 
+            shape = np.shape(post_values)
+            ic_metric = np.zeros([shape[0]])
+            a_b = np.zeros([shape[0], 2])
+
+            for i in range(shape[0]):
+                ic_metric[i], a_b[i, :] = get_i_metric(post_values[i, :].tolist())
+
             # Create a xarray with posteriors:
-            with self._context('predict_proba.xarray', self._context_args):
+            with self._context('ic_metric.xarray', self._context_args):
 
                 P = []
-                for k in range(self.K):
-                    X = post_values[:, k]
-                    x = self.unravel(ds, sampling_dims, X)
-                    P.append(x)
+                x = self.unravel(ds, sampling_dims, ic_metric)
+                P.append(x)
 
-                da = xr.concat(P, dim=classdimname).rename('PCM_POST')
-                da.attrs['long_name'] = 'PCM posteriors'
+                da = xr.concat(P, dim='i-metric').rename('I_METRIC')
+                da.attrs['long_name'] = 'I metric'  # '$\mathcal{I}$--metric'
                 da.attrs['units'] = ''
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = 1
 
-            with self._context('add_rank.xarray', self._context_args):
+            with self._context('top_two.xarray', self._context_args):
+
                 P = []   # empty list
-                for k in range(self.K):
-                    X = rank[:, k]
+                for i in range(2):
+                    X = a_b[:, i]
                     x = self.unravel(ds, sampling_dims, X)
                     P.append(x)
 
-                da_rank = xr.concat(P, dim=classdimname).rename('PCM_RANK')
-                da_rank.attrs['long_name'] = 'PCM Rank'
+                da_rank = xr.concat(P, dim='rank').rename('A_B')
+                da_rank.attrs['long_name'] = 'Top Two Clusters'
                 da_rank.attrs['units'] = ''
                 da_rank.attrs['valid_min'] = 0
                 da_rank.attrs['valid_max'] = self.K
 
             # Add posteriors to the dataset:
             if inplace:
+                ds = ds.pyxpcm.add(da)
                 return ds.pyxpcm.add(da_rank)
             else:
                 return da, da_rank

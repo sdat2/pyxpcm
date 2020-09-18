@@ -97,7 +97,8 @@ def proper_units(text):
         'degrees\_celsius': r'$^{\circ}$C',
         'degrees\_north': r'$^{\circ}$N',
         'degrees\_east': r'$^{\circ}$E',
-        'degrees\_west': r'$^{\circ}$W'
+        'degrees\_west': r'$^{\circ}$W',
+        'I metric': '$\mathcal{I}$--metric'
     }
     regex = re.compile('|'.join(re.escape(key) for key in sorted(conv.keys(), key=lambda item: - len(item))))
     return regex.sub(lambda match: conv[match.group()], text)
@@ -112,9 +113,10 @@ def ds_for_graphing(dsA):
                 da.attrs[attr] = proper_units(tex_escape(da.attrs[attr]))
 
     for coord in ds.coords:
-        for attr in ds.coords[coord].attrs:
-            if attr in ['units', 'long_name']:
-                da.coords[coord].attrs[attr] = proper_units(tex_escape(da.coords[coord].attrs[attr]))
+        if coord not in ['Z']:
+            for attr in ds.coords[coord].attrs:
+                if attr in ['units', 'long_name']:
+                    da.coords[coord].attrs[attr] = proper_units(tex_escape(da.coords[coord].attrs[attr]))
 
     return ds
 
