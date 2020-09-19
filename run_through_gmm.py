@@ -122,4 +122,51 @@ def merge_and_save_joint():
     xr.save_mfdataset([pca_ds], ['nc/i-metric-joint.nc'], format='NETCDF4')
 
 
-merge_and_save_joint()
+# merge_and_save_joint()
+
+def run_k_on_interpolated_year(time_i=42, maxvar=2, min_depth=300,
+                                     max_depth=2000, separate_pca=True):
+
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+    z = np.arange(-min_depth, -max_depth, -10.)
+    features_pcm = {'THETA': z, 'SALT': z}
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
+    salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i + 12))
+    theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i + 12))
+    big_nc = xr.merge([salt_nc, theta_nc])
+
+    both_nc = big_nc.where(big_nc.coords['Depth'] >
+                           max_depth).drop(['iter', 'Depth',
+                                            'rA', 'drF', 'hFacC'])
+
+    lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60 * 4)
+    lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
+    ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new})
+
+    for K in range(2, 10):
+
+
+        bic_list = []
+
+        m = pcm(K=K, features=features_pcm,
+                separate_pca=separate_pca,
+                maxvar=maxvar,
+                timeit=True,
+                timeit_verb=1)
+
+        m.fit(ds, features=features, dim='Z')
+
+        bic = m.bic(ds, features=features, dim='Z')
+
+        print(bic)
+
+        bic_list.append(bic)
+
+        del m
+
+    print(bic_list)
+
+
+run_k_on_interpolated_year(separate_pca=False)
