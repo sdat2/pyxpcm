@@ -1,0 +1,125 @@
+main_dir = '/Users/simon/bsose_monthly/'
+salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+
+# %load_ext autoreload
+# %autoreload 2
+import numpy as np
+import xarray as xr
+xr.set_options(keep_attrs=True)
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature
+import matplotlib.path as mpath
+# import os, sys
+# sys.path.insert(0, os.path.abspath('..'))
+
+import pyxpcm
+from pyxpcm.models import pcm
+
+
+def train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
+                               max_depth=2000, separate_pca=True):
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+    z = np.arange(-min_depth, -max_depth, -10.)
+    features_pcm = {'THETA': z, 'SALT': z}
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
+    salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i+12))
+    theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i+12))
+    big_nc = xr.merge([salt_nc, theta_nc])
+    both_nc = big_nc.where(big_nc.coords['Depth'] >
+                           max_depth).drop(['iter', 'Depth',
+                                            'rA', 'drF', 'hFacC'])
+
+    lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60*4)
+    lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
+    ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new}) #, method='cubic')
+
+    m = pcm(K=K, features=features_pcm,
+            separate_pca=separate_pca,
+            maxvar=maxvar,
+            timeit=True, timeit_verb=1)
+
+    m.fit(ds, features=features, dim='Z')  #, inplace=True)
+
+    m.add_pca_to_xarray(ds, features=features,
+                        dim='Z', inplace=True)
+
+    # m.find_i_metric(ds, inplace=True)
+
+    return m
+
+
+def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
+    main_dir = '/Users/simon/bsose_monthly/'
+    salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
+    theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
+    salt_nc = xr.open_dataset(salt).isel(time=time_i)
+    theta_nc = xr.open_dataset(theta).isel(time=time_i)
+    big_nc = xr.merge([salt_nc, theta_nc])
+    both_nc = big_nc.where(big_nc.coords['Depth'] >
+                           max_depth).drop(['iter', 'Depth',
+                                            'rA', 'drF', 'hFacC'])
+
+    attr_d = {}
+
+    for coord in both_nc.coords:
+        attr_d[coord] = both_nc.coords[coord].attrs
+
+    ds = both_nc
+
+    ds = m.find_i_metric(ds, inplace=True)
+
+    def sanitize():
+        del ds.IMETRIC.attrs['_pyXpcm_cleanable']
+        del ds.A_B.attrs['_pyXpcm_cleanable']
+
+    for coord in attr_d:
+        ds.coords[coord].attrs = attr_d[coord]
+
+    sanitize()
+
+    ds = ds.drop(['SALT', 'THETA'])
+
+    ds = ds.expand_dims(dim='time', axis=None)
+
+    ds = ds.assign_coords({"time":
+                           ("time",
+                            [salt_nc.coords['time'].values])})
+
+    ds.coords['time'].attrs = salt_nc.coords['time'].attrs
+
+    ds.to_netcdf('nc/i-metric-joint/' + str(time_i) + '.nc', format='NETCDF4')
+
+
+def run_through_joint_two():
+    m = train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
+                                   max_depth=2000, separate_pca=False)
+
+    # m.to_netcdf('nc/pc-joint-m.nc')
+
+    for time_i in range(60):
+        pca_from_interpolated_year(m, time_i=time_i)
+
+
+# run_through_joint_two()
+
+
+def merge_and_save_joint():
+
+    pca_ds = xr.open_mfdataset('nc/i-metric-joint/*.nc',
+                               concat_dim="time",
+                               combine='by_coords',
+                               chunks={'time': 1},
+                               data_vars='minimal',
+                               # parallel=True,
+                               coords='minimal',
+                               compat='override')   # this is too intense for memory
+
+    xr.save_mfdataset([pca_ds], ['nc/i-metric-joint.nc'], format='NETCDF4')
+
+
+merge_and_save_joint()
