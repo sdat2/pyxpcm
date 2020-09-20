@@ -18,7 +18,7 @@ import pyxpcm
 from pyxpcm.models import pcm
 
 
-def train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
+def train_on_interpolated_year(time_i=42, K=5, maxvar=2, min_depth=300,
                                max_depth=2000, separate_pca=True):
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
@@ -92,11 +92,11 @@ def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
 
     ds.coords['time'].attrs = salt_nc.coords['time'].attrs
 
-    ds.to_netcdf('nc/i-metric-joint/' + str(time_i) + '.nc', format='NETCDF4')
+    ds.to_netcdf('nc/i-metric-joint-k-5/' + str(time_i) + '.nc', format='NETCDF4')
 
 
 def run_through_joint_two():
-    m = train_on_interpolated_year(time_i=42, K=4, maxvar=2, min_depth=300,
+    m = train_on_interpolated_year(time_i=42, K=5, maxvar=2, min_depth=300,
                                    max_depth=2000, separate_pca=False)
 
     # m.to_netcdf('nc/pc-joint-m.nc')
@@ -105,12 +105,12 @@ def run_through_joint_two():
         pca_from_interpolated_year(m, time_i=time_i)
 
 
-# run_through_joint_two()
+run_through_joint_two()
 
 
 def merge_and_save_joint():
 
-    pca_ds = xr.open_mfdataset('nc/i-metric-joint/*.nc',
+    pca_ds = xr.open_mfdataset('nc/i-metric-joint-k-5/*.nc',
                                concat_dim="time",
                                combine='by_coords',
                                chunks={'time': 1},
@@ -119,10 +119,10 @@ def merge_and_save_joint():
                                coords='minimal',
                                compat='override')   # this is too intense for memory
 
-    xr.save_mfdataset([pca_ds], ['nc/i-metric-joint.nc'], format='NETCDF4')
+    xr.save_mfdataset([pca_ds], ['nc/i-metric-joint-k-5.nc'], format='NETCDF4')
 
 
-# merge_and_save_joint()
+merge_and_save_joint()
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
 
@@ -151,6 +151,7 @@ def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
 
 
 def make_interp(time_i=42, min_depth=300, max_depth=2000, ):
+
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
@@ -171,8 +172,9 @@ def make_interp(time_i=42, min_depth=300, max_depth=2000, ):
     return ds
 
 
-def run_k_on_interpolated_year(time_i=42,min_depth=300,
-                               max_depth=2000,  maxvar=3, separate_pca=True):
+def run_k_on_interpolated_year(time_i=42, min_depth=300,
+                               max_depth=2000,  maxvar=3,
+                               separate_pca=True):
 
     # ds = make_interp(time_i=time_i, min_depth=min_depth, max_depth=max_depth)
     ds = xr.open_dataset('interp.nc')

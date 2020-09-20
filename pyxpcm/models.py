@@ -1409,8 +1409,11 @@ class pcm(object):
             ic_metric = np.zeros([shape[0]])
             a_b = np.zeros([shape[0], 2])
 
-            for i in range(shape[0]):
-                ic_metric[i], a_b[i, :] = get_i_metric(post_values[i, :].tolist())
+
+            with self._context('predict_proba.i_metric', self._context_args):
+                
+                for i in range(shape[0]):
+                    ic_metric[i], a_b[i, :] = get_i_metric(post_values[i, :].tolist())
 
             # Create a xarray with posteriors:
             with self._context('ic_metric.xarray', self._context_args):
