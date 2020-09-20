@@ -156,15 +156,19 @@ class pyXpcmDataSetAccessor:
         """
         features_dict = dict()
         for feature_in_pcm in this_pcm._props['features']:
-            if features == None:
-                feature_in_ds = self.__id_feature_name(this_pcm, {feature_in_pcm: None})
-            elif feature_in_pcm not in features:
-                raise PCMFeatureError("%s feature not defined" % feature_in_pcm)
-            else:
-                feature_in_ds = features[feature_in_pcm]
-                if feature_in_ds not in self._obj.data_vars:
-                    raise PCMFeatureError("Feature %s not in this dataset as %s" % (feature_in_pcm, feature_in_ds))
-            features_dict[feature_in_pcm] = feature_in_ds
+            if feature_in_pcm != 'all':
+                if features == None:
+                    feature_in_ds = self.__id_feature_name(this_pcm, {feature_in_pcm: None})
+                # TODO Check if this alternation fixes bug for joint pca step.
+                elif feature_in_pcm not in features:
+                    raise PCMFeatureError("%s feature not defined" % feature_in_pcm)
+                else:
+                    feature_in_ds = features[feature_in_pcm]
+                    # TODO Check if this alternation fixes bug for joint pca step.
+                    if feature_in_ds not in self._obj.data_vars:
+                        raise PCMFeatureError("Feature %s not in this dataset as %s" % (feature_in_pcm, feature_in_ds))
+
+                features_dict[feature_in_pcm] = feature_in_ds
 
         # if features:
         #     features_dict = dict()
@@ -181,7 +185,8 @@ class pyXpcmDataSetAccessor:
 
         # Re-order the dictionary to match the PCM set order:
         for key in this_pcm._props['features']:
-            features_dict[key] = features_dict.pop(key)
+            if key != 'all':
+                features_dict[key] = features_dict.pop(key)
 
         return features_dict
 

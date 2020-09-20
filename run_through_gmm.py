@@ -124,15 +124,36 @@ def merge_and_save_joint():
 
 # merge_and_save_joint()
 
-def run_k_on_interpolated_year(time_i=42, maxvar=2, min_depth=300,
-                                     max_depth=2000, separate_pca=True):
+def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
 
+    print('K =', K)
+
+    ds2 = ds.copy()
+
+    m = pcm(K=K, features=features_pcm,
+            separate_pca=separate_pca,
+            maxvar=maxvar,
+            # timeit=True,
+            # timeit_verb=1
+            )
+
+    m.fit(ds2, features=features, dim='Z')
+
+    bic = m.bic(ds2, features=features, dim='Z')
+
+    print('bic ', bic)
+
+    # del m
+
+    # del ds2
+
+    return bic
+
+
+def make_interp(time_i=42, min_depth=300, max_depth=2000, ):
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
-    z = np.arange(-min_depth, -max_depth, -10.)
-    features_pcm = {'THETA': z, 'SALT': z}
-    features = {'THETA': 'THETA', 'SALT': 'SALT'}
     salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i + 12))
     theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i + 12))
     big_nc = xr.merge([salt_nc, theta_nc])
@@ -145,26 +166,28 @@ def run_k_on_interpolated_year(time_i=42, maxvar=2, min_depth=300,
     lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
     ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new})
 
-    for K in range(2, 10):
+    ds.to_netcdf('interp.nc')
+
+    return ds
 
 
-        bic_list = []
+def run_k_on_interpolated_year(time_i=42,min_depth=300,
+                               max_depth=2000,  maxvar=3, separate_pca=True):
 
-        m = pcm(K=K, features=features_pcm,
-                separate_pca=separate_pca,
-                maxvar=maxvar,
-                timeit=True,
-                timeit_verb=1)
+    # ds = make_interp(time_i=time_i, min_depth=min_depth, max_depth=max_depth)
+    ds = xr.open_dataset('interp.nc')
 
-        m.fit(ds, features=features, dim='Z')
+    z = np.arange(-min_depth, -max_depth, -10.)
+    features_pcm = {'THETA': z, 'SALT': z}
+    features = {'THETA': 'THETA', 'SALT': 'SALT'}
 
-        bic = m.bic(ds, features=features, dim='Z')
+    bic_list = []
 
-        print(bic)
+    for K in range(2, 20):
 
-        bic_list.append(bic)
+        bic_list.append(one_fit(ds, K, features, features_pcm, separate_pca, maxvar))
 
-        del m
+    # for K in range(3, 10):
 
     print(bic_list)
 

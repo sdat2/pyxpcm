@@ -191,30 +191,34 @@ class pcm(object):
 
             # self._scaler[feature_name] = preprocessing.StandardScaler(with_mean=with_mean,
             #                                             with_std=with_std)
-            if 'none' not in self._props['with_scaler']:
+            if 'none' not in self._props['with_scaler'] and feature_name != 'all':
                 # _scaler is an ordered dict object with
                 self._scaler[feature_name] = bck.scaler(with_mean=with_mean, with_std=with_std)
-            else:
+            elif feature_name != 'all':
                 self._scaler[feature_name] = NoTransform()
-            self._scaler_props[feature_name] = {'units': '?'}
-
+            if feature_name != 'all':
+                self._scaler_props[feature_name] = {'units': '?'}
             is_slice = np.all(feature_axis == None)
             if not is_slice:
-                self._interpoler[feature_name] = Vertical_Interpolator(axis=feature_axis, debug=self._debug)
+                if feature_name != 'all':
+                    self._interpoler[feature_name] = Vertical_Interpolator(axis=feature_axis, debug=self._debug)
                 if np.prod(feature_axis.shape) == 1:
                     # Single level: no need to reduce
                     if self._debug: print('Single level, not need to reduce', np.prod(feature_axis.ndim))
                     self._reducer[feature_name] = NoTransform()
                 else:
                     # Multi-vertical-levels, set reducer:
-                    if with_reducer:
-                        self._reducer[feature_name] = bck.reducer(n_components=self._props['maxvar'],
-                                                                  svd_solver='full')
-                    else:
-                        self._reducer[feature_name] = NoTransform()
+                    if (separate_pca) or (not separate_pca and feature_name == 'all'):
+                        if with_reducer:
+                            self._reducer[feature_name] = bck.reducer(n_components=self._props['maxvar'],
+                                                                      svd_solver='full')
+                        else:
+                            self._reducer[feature_name] = NoTransform()
             else:
-                self._interpoler[feature_name] = NoTransform()
-                self._reducer[feature_name] = NoTransform()
+                if feature_name != 'all':
+                    self._interpoler[feature_name] = NoTransform()
+                if (separate_pca) or (not separate_pca and feature_name == 'all'):
+                    self._reducer[feature_name] = NoTransform()
                 if self._debug: print("%s is single level, no need to reduce" % feature_name)
 
             self._homogeniser[feature_name] = {'mean': 0, 'std': 1}
@@ -232,11 +236,12 @@ class pcm(object):
 
         if timeit:
             self._context = self.__timeit_context
-            self._context_args = {'maxlevel': 3, 'verb':timeit_verb}
+            self._context_args = {'maxlevel': 3, 'verb': timeit_verb}
             self._timeit = dict()
 
         # Define statistics for the fit method:
-        self._fit_stats = dict({'datetime': None, 'n_samples_seen_': None,
+        self._fit_stats = dict({'datetime': None,
+                                'n_samples_seen_': None,
                                  'score': None, 'etime': None})
 
     @contextmanager
@@ -771,6 +776,9 @@ class pcm(object):
         this_context_0 = str(action) + '.1-preprocess.2-feature_'
 
         features_dict = ds.pyxpcm.feature_dict(self, features=features)
+
+        print('features_dict', features_dict)
+
         x_list = []
 
         for feature_in_pcm in features_dict:
@@ -1354,8 +1362,8 @@ class pcm(object):
 
         def get_i_metric(posterior_prob_list):
             """
-            :return: gmm_profile list:
-            :return: gmm: the gmm object to save.
+            :return: the i metric
+            :return: the first and second most important clusters.
             """
             if np.nan not in posterior_prob_list:
 
@@ -1538,5 +1546,8 @@ class pcm(object):
             bic = (- 2 * llh * N_samples
                    + _n_parameters(self._classifier)
                    * np.log(N_samples))
+
+            alt_bic = self._classifier.bic(X)
+            print('alt_bic ', alt_bic)
 
         return bic
