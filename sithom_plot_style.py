@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 
-
 def mpl_params(quality='high'):
     """
     Apply my plotting style to produce nice looking figures.

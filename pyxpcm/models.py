@@ -1345,7 +1345,7 @@ class pcm(object):
     def find_i_metric(self, ds, features=None, dim=None, inplace=False,
                       name='PCM_I', classdimname='pcm_class'):
         """
-        TODO this still needs to be fixd, and a compatabilte plotting function added.
+        TODO this still needs to be fixed, and a compatabilte plotting function added.
 
         from math import comb
         for i in range(2, 10):
@@ -1383,7 +1383,7 @@ class pcm(object):
 
         list = [i for i in range(self.K)]
 
-        cart_prod = [(a, b) for a in list for b in list if a >= b]
+        cart_prod = [(a, b) for a in list for b in list if a >= b and a != b]
 
         print(cart_prod)
 
@@ -1411,7 +1411,7 @@ class pcm(object):
 
 
             with self._context('predict_proba.i_metric', self._context_args):
-                
+
                 for i in range(shape[0]):
                     ic_metric[i], a_b[i, :] = get_i_metric(post_values[i, :].tolist())
 
