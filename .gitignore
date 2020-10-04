@@ -6,6 +6,8 @@ MANIFEST.in
 
 # build distribution folder.
 /build/
+__pycache__
+old
 
 # Setuptools distribution folder.
 /dist/
