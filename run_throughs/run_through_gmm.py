@@ -194,4 +194,4 @@ def run_k_on_interpolated_year(time_i=42, min_depth=300,
     print(bic_list)
 
 
-run_k_on_interpolated_year(separate_pca=False)
+# run_k_on_interpolated_year(separate_pca=False)
