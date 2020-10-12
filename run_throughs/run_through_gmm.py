@@ -46,10 +46,15 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=2, min_depth=300,
 
     m.add_pca_to_xarray(ds, features=features,
                         dim='Z', inplace=True)
+    m.find_i_metric(ds, inplace=True)
 
-    # m.find_i_metric(ds, inplace=True)
+    del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']
+    del ds.IMETRIC.attrs['_pyXpcm_cleanable']
+    del ds.A_B.attrs['_pyXpcm_cleanable']
 
-    return m
+    ds = ds.drop(['THETA', 'SALT'])
+
+    return m, ds
 
 
 def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
@@ -105,7 +110,7 @@ def run_through_joint_two():
         pca_from_interpolated_year(m, time_i=time_i)
 
 
-run_through_joint_two()
+# run_through_joint_two()
 
 
 def merge_and_save_joint():
@@ -122,7 +127,7 @@ def merge_and_save_joint():
     xr.save_mfdataset([pca_ds], ['nc/i-metric-joint-k-5.nc'], format='NETCDF4')
 
 
-merge_and_save_joint()
+# merge_and_save_joint()
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
 

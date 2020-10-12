@@ -13,6 +13,7 @@ import numpy as np
 import re
 # import cartopy.crs as ccrs
 import matplotlib
+import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import xarray as xr
 
@@ -227,11 +228,11 @@ def replacement_color_list(number_of_colors):
         color_list = color_d[13]
     return color_list
 
-def rerturn_list_of_colormaps(number):
+def rerturn_list_of_colormaps(number, fade_to_white=True):
     color_list = replacement_color_list(number)
     cmap_list = []
-    for item in range(number):
-        cmap_list.append(fading_colormap(base_color_list[i %
+    for i in range(number):
+        cmap_list.append(fading_colormap(color_list[i %
                                                          len(color_list)],
                                          fade_to_white=fade_to_white))
     return cmap_list
