@@ -18,11 +18,13 @@ import pyxpcm
 from pyxpcm.models import pcm
 
 
-def train_on_interpolated_year(time_i=42, K=5, maxvar=2, min_depth=300,
+def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
                                max_depth=2000, separate_pca=True):
+
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
+
     z = np.arange(-min_depth, -max_depth, -10.)
     features_pcm = {'THETA': z, 'SALT': z}
     features = {'THETA': 'THETA', 'SALT': 'SALT'}
@@ -42,10 +44,11 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=2, min_depth=300,
             maxvar=maxvar,
             timeit=True, timeit_verb=1)
 
-    m.fit(ds, features=features, dim='Z')  #, inplace=True)
+    m.fit(ds, features=features, dim='Z')
 
     m.add_pca_to_xarray(ds, features=features,
                         dim='Z', inplace=True)
+
     m.find_i_metric(ds, inplace=True)
 
     del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']

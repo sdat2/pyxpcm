@@ -10,6 +10,7 @@ sps.ds_for_grahing(ds).plot()
 """
 
 import numpy as np
+import numpy.linalg as la
 import re
 # import cartopy.crs as ccrs
 import matplotlib
@@ -228,7 +229,8 @@ def replacement_color_list(number_of_colors):
         color_list = color_d[13]
     return color_list
 
-def rerturn_list_of_colormaps(number, fade_to_white=True):
+
+def return_list_of_colormaps(number, fade_to_white=True):
     color_list = replacement_color_list(number)
     cmap_list = []
     for i in range(number):
@@ -256,3 +258,136 @@ def key_to_cmap(data_d,
         cmap_d[sorted_key_list[i]] = fading_colormap(base_color_list[i % len(base_color_list)],
                                                      fade_to_white=fade_to_white)
     return cmap_d
+
+
+def plot_ellipsoid_trial():
+    """
+    https://stackoverflow.com/questions/7819498/plotting-ellipsoid-with-matplotlib
+
+    :return:
+    """
+
+    # your ellipsoid's covariance_matrix and mean in matrix form
+    covariance_matrix = np.array([[1, 0.5, 0],
+                                  [0.2, 2, 0],
+                                  [0, 0, 10]])
+    covariance_matrix1 = np.array([[1, 0.1, 0],
+                                   [0.2, 8, 0],
+                                   [0, 0, 1]])
+
+    mean = [-0.2, 0.3, 0.1]
+    mean1 = [0, 0, 0]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    fig = plot_ellipsoid(fig, ax, covariance_matrix, mean, 1, 'b')
+    plot_ellipsoid(fig, ax, covariance_matrix1, mean1, 1, 'g')
+    plt.show()
+
+
+def plot_ellipsoid(fig, ax, covariance_matrix, mean,
+                   weight, color, print_properties=False,
+                   additional_rotation=np.identity(3)):
+    """
+    A function for drawing 3d-multivariate guassians with method initially from:
+    https://stackoverflow.com/questions/7819498/plotting-ellipsoid-with-matplotlib
+
+    :param fig: The figure matplotlib.pyplot object
+    :param ax: The axis matplotlib.pylot object with Axes3D extension
+    :param covariance_matrix: A covariance matrix input from the multivariate guassian to be plotted
+    :param mean: ditto
+    :param weight: ditto
+    :param color: ditto
+    :return: fig and ax so that they can be used by further plotting steps.
+    """
+
+    # I arbitrarily choose some levels to in the multivariate Gaussian to plot.
+
+    if print_properties == True:
+        print('weight', weight)
+        print('mean', mean)
+        print('covariance matrix', covariance_matrix)
+
+    for frac_sigma, alpha in [[1, 0.2*weight*0.5],
+                              [1/np.e, 0.4*weight*0.5],
+                              [1/(np.e**2), 0.6*weight*0.5]]:
+        # find the rotation matrix and radii of the axes
+        U, s, rotation = la.svd(covariance_matrix)
+        # Singular Value Decomposition from numpy.linalg finds the variance vector s when the covariance
+        # matrix has been rotated so that it is diagonal
+        radii = np.sqrt(s/frac_sigma)
+        # s is the sigma*2 in each of the principal axes directions
+
+        # now carry on with EOL's answer
+        u = np.linspace(0.0, 2.0 * np.pi, 100)  # AZIMUTHAL ANGLE (LONGITUDE)
+        v = np.linspace(0.0, np.pi, 100)  # POLAR ANGLE (LATITUDE)
+        # COORDINATES OF THE SURFACE PRETENDING THAT THE GAUSSIAN IS AT THE CENTRE & NON ROTATED
+        x = radii[0] * np.outer(np.cos(u), np.sin(v))  # MESH FOR X
+        y = radii[1] * np.outer(np.sin(u), np.sin(v))  # MESH FOR Y
+        z = radii[2] * np.outer(np.ones_like(u), np.cos(v))  # MESH FOR Z
+
+        # move so that the gaussian is actually rotated and on the right point.
+        for i in range(len(x)):
+            for j in range(len(x)):
+                [x[i, j], y[i, j], z[i, j]] = np.dot([x[i, j], y[i, j], z[i, j]], rotation) + mean
+                [x[i, j], y[i, j], z[i, j]] = np.dot(additional_rotation, [x[i, j], y[i, j], z[i, j]])
+
+        # plot the surface in a reasonable partially translucent way
+        ax.plot_surface(x, y, z, rstride=4, cstride=4, color=color, alpha=alpha)
+
+    return fig, ax
+
+def plot_ellipse(fig, ax, covariance_matrix, mean,
+                 weight, color, print_properties=False,):
+    """
+    A function for drawing 3d-multivariate guassians with method initially from:
+    https://stackoverflow.com/questions/7819498/plotting-ellipsoid-with-matplotlib
+
+    :param fig: The figure matplotlib.pyplot object
+    :param ax: The axis matplotlib.pylot object with Axes3D extension
+    :param covariance_matrix: A covariance matrix input from the multivariate guassian to be plotted
+    :param mean: ditto
+    :param weight: ditto
+    :param color: ditto
+    :return: fig and ax so that they can be used by further plotting steps.
+    """
+
+    # I arbitrarily choose some levels to in the multivariate Gaussian to plot.
+
+    if print_properties == True:
+        print('weight', weight)
+        print('mean', mean)
+        print('covariance matrix', covariance_matrix)
+
+    for frac_sigma, alpha in [[1, 0.2*weight*0.5],
+                              [1/np.e, 0.4*weight*0.5],
+                              [1/(np.e**2), 0.6*weight*0.5]]:
+
+        # find the rotation matrix and radii of the axes
+        U, s, rotation = la.svd(covariance_matrix)
+        # Singular Value Decomposition from numpy.linalg finds
+        # the variance vector s when the covariance
+        # matrix has been rotated so that it is diagonal
+        radii = np.sqrt(s/frac_sigma)
+        # s is the sigma*2 in each of the principal axes directions
+
+        # now carry on with EOL's answer
+        u = np.linspace(0.0, 2.0 * np.pi, 100)  # AZIMUTHAL ANGLE (LONGITUDE)
+        v = np.linspace(0.0, np.pi, 100)  # POLAR ANGLE (LATITUDE)
+
+        # COORDINATES OF THE SURFACE PRETENDING THAT THE GAUSSIAN IS AT THE CENTRE & NON ROTATED
+
+        x = radii[0] * np.outer(np.cos(u), np.sin(v))  # MESH FOR X
+        y = radii[1] * np.outer(np.sin(u), np.sin(v))  # MESH FOR Y
+        z = radii[2] * np.outer(np.ones_like(u), np.cos(v))  # MESH FOR Z
+
+        # move so that the gaussian is actually rotated and on the right point.
+        for i in range(len(x)):
+            for j in range(len(x)):
+                [x[i, j], y[i, j], z[i, j]] = np.dot([x[i, j], y[i, j], z[i, j]], rotation) + mean
+                [x[i, j], y[i, j], z[i, j]] = np.dot(additional_rotation, [x[i, j], y[i, j], z[i, j]])
+
+        # plot the surface in a reasonable partially translucent way
+        ax.plot_surface(x, y, z, rstride=4, cstride=4, color=color, alpha=alpha)
+
+    return fig, ax

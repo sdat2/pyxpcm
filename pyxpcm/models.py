@@ -1248,7 +1248,7 @@ class pcm(object):
                 da.attrs['long_name'] = 'PCM labels'
                 da.attrs['units'] = ''
                 da.attrs['valid_min'] = 0
-                da.attrs['valid_max'] = self._props['K']-1
+                da.attrs['valid_max'] = self._props['K'] - 1
                 da.attrs['llh'] = self._props['llh']
 
             # Add labels to the dataset:
@@ -1375,7 +1375,7 @@ class pcm(object):
 
                 label = posterior_prob_list.index(sorted_posterior_list[-1])
 
-                return ic_metric, np.array([label, runner_up_label])
+                return ic_metric, np.array([label, runner_up_label]) # np.sort()
 
             else:
 
@@ -1385,7 +1385,6 @@ class pcm(object):
 
         cart_prod = [(a, b) for a in list for b in list if a >= b and a != b]
 
-        print(cart_prod)
 
         with self._context('predict_prob', self._context_args):
 
