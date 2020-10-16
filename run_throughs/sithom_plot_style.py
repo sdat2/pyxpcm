@@ -384,6 +384,7 @@ def plot_ellipse(fig, ax, covariance_matrix, mean,
         # move so that the gaussian is actually rotated and on the right point.
         for i in range(len(x)):
             for j in range(len(x)):
+
                 [x[i, j], y[i, j], z[i, j]] = np.dot([x[i, j], y[i, j], z[i, j]], rotation) + mean
                 [x[i, j], y[i, j], z[i, j]] = np.dot(additional_rotation, [x[i, j], y[i, j], z[i, j]])
 

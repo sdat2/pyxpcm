@@ -50,6 +50,7 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
                         dim='Z', inplace=True)
 
     m.find_i_metric(ds, inplace=True)
+    m.predict(ds, features=features, dim='Z',inplace=True)
 
     del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']
     del ds.IMETRIC.attrs['_pyXpcm_cleanable']
