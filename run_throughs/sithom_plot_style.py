@@ -94,7 +94,7 @@ def tex_escape(text):
 def proper_units(text):
     conv = {
         'degK': r'K',
-        'degC': r'$^{\circ}C$',
+        'degC': r'$^{\circ}$C',
         'degrees\_celsius': r'$^{\circ}$C',
         'degrees\_north': r'$^{\circ}$N',
         'degrees\_east': r'$^{\circ}$E',
@@ -321,6 +321,7 @@ def plot_ellipsoid(fig, ax, covariance_matrix, mean,
         # now carry on with EOL's answer
         u = np.linspace(0.0, 2.0 * np.pi, 100)  # AZIMUTHAL ANGLE (LONGITUDE)
         v = np.linspace(0.0, np.pi, 100)  # POLAR ANGLE (LATITUDE)
+
         # COORDINATES OF THE SURFACE PRETENDING THAT THE GAUSSIAN IS AT THE CENTRE & NON ROTATED
         x = radii[0] * np.outer(np.cos(u), np.sin(v))  # MESH FOR X
         y = radii[1] * np.outer(np.sin(u), np.sin(v))  # MESH FOR Y
@@ -382,6 +383,7 @@ def plot_ellipse(fig, ax, covariance_matrix, mean,
         z = radii[2] * np.outer(np.ones_like(u), np.cos(v))  # MESH FOR Z
 
         # move so that the gaussian is actually rotated and on the right point.
+        
         for i in range(len(x)):
             for j in range(len(x)):
 

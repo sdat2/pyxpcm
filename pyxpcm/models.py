@@ -1395,7 +1395,6 @@ class pcm(object):
             X, sampling_dims = self.preprocessing(ds, features=features,
                                                   dim=dim, action='predict_proba')
 
-            print(np.shape(X))
 
             # CLASSIFICATION PREDICTION:
             with self._context('predict_proba.predict', self._context_args):

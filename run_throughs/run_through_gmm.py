@@ -62,10 +62,12 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
 
 
 def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
+
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
     theta = main_dir + 'bsose_i106_2008to2012_monthly_Theta.nc'
     features = {'THETA': 'THETA', 'SALT': 'SALT'}
+
     salt_nc = xr.open_dataset(salt).isel(time=time_i)
     theta_nc = xr.open_dataset(theta).isel(time=time_i)
     big_nc = xr.merge([salt_nc, theta_nc])
@@ -82,9 +84,13 @@ def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
 
     ds = m.find_i_metric(ds, inplace=True)
 
+    ds = m.add_pca_to_xarray(ds, features=features,
+                            dim='Z', inplace=True)
+
     def sanitize():
         del ds.IMETRIC.attrs['_pyXpcm_cleanable']
         del ds.A_B.attrs['_pyXpcm_cleanable']
+        del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']
 
     for coord in attr_d:
         ds.coords[coord].attrs = attr_d[coord]
@@ -101,7 +107,9 @@ def pca_from_interpolated_year(m, time_i=42, max_depth=2000):
 
     ds.coords['time'].attrs = salt_nc.coords['time'].attrs
 
-    ds.to_netcdf('nc/i-metric-joint-k-5/' + str(time_i) + '.nc', format='NETCDF4')
+    # ds.to_netcdf('nc/i-metric-joint-k-5/' + str(time_i) + '.nc', format='NETCDF4')
+
+    return ds
 
 
 def run_through_joint_two():
@@ -129,9 +137,6 @@ def merge_and_save_joint():
                                compat='override')   # this is too intense for memory
 
     xr.save_mfdataset([pca_ds], ['nc/i-metric-joint-k-5.nc'], format='NETCDF4')
-
-
-# merge_and_save_joint()
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
 
