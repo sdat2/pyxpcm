@@ -1,5 +1,5 @@
 import numpy as np
-import numpy.linalg as la
+import pandas as pd 
 import xarray as xr
 xr.set_options(keep_attrs=True)
 import matplotlib.pyplot as plt
@@ -10,14 +10,14 @@ import os, sys
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 import matplotlib.patches as patch
 
-#  sys.path.insert(0, os.path.abspath('../../pyxpcm/'))
 
 import pyxpcm
 from pyxpcm.models import pcm
 import run_throughs.sithom_plot_style as sps
-import run_throughs.run_through_gmm as rtg
+import run_through_gmm as rtg
 
 
+@rtg.timeit
 def plot_da(da, time_i):
     
     map_proj = ccrs.SouthPolarStereo()
@@ -28,7 +28,8 @@ def plot_da(da, time_i):
     gs = GridSpec(nrows=2, ncols=pairs,
                   width_ratios=[1 / pairs
                                     for x in range(pairs)],
-                  height_ratios=[1, 0.05])
+                  height_ratios=[1, 0.05],
+                  wspace=0.15)
     
     fig = plt.gcf()
 
@@ -57,19 +58,20 @@ def plot_da(da, time_i):
                                                ax=ax1,
                                                add_colorbar=False,
                                                transform=carree,                      
-                                               # the data's projection
                                                subplot_kws={"projection": map_proj},  
-                                               # the plot's projection
                                                )
         cbar = plt.colorbar(im, cax=cbar_axes[i],
                             orientation='horizontal',
-                            ticks=[0,  1]
-                            )
+                            ticks=[0,  1])
         cbar.set_label( da.coords['pair'].values[i])
     plt.suptitle('')
     plt.title('')
+    ax1.set_title('')
     ax1.coastlines()
     plt.tight_layout()
-    # plt.savefig()
-    plt.show()
+    ts = pd.to_datetime(str(da.coords['time'].values[time_i])) 
+    plt.savefig('../FBSO-Report/images/i_metric_' 
+                + ts.strftime('%Y-%m-%d') +'_'
+                + '.png', dpi=600, bbox_inches='tight')    
+    plt.clf()
 

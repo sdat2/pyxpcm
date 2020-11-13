@@ -1,7 +1,10 @@
-import xarray as xr
 import numpy as np
+import xarray as xr
+xr.set_options(keep_attrs=True)
+import run_through_gmm as rtg
 
 
+@rtg.timeit
 def pair_i_metric(ds):
     
     sorted_version = np.sort(ds.A_B.values, axis=0)
@@ -19,24 +22,24 @@ def pair_i_metric(ds):
     pair_list = []
 
     for pair in cart_prod:
-
+        
         shape = np.shape(sorted_version)
-
+        
         pair_i_metric = np.empty([shape[1], shape[2], shape[3]])
         pair_i_metric[:] = np.nan
-
-        at_least_one_point = False
         
+        at_least_one_point = False
+         
         for i in range(shape[1]):
             for j in range(shape[2]):
                 for k in range(shape[3]):
                     
                     if np.array_equal(pair, sorted_version[:, i, j, k]):
-                        if i_metric[i, j, k] >= 0.3:
+                        if i_metric[i, j, k] >= 0.05:
                             
                             pair_i_metric[i, j, k] = i_metric[i, j, k]
                             at_least_one_point = True
-
+                
         if at_least_one_point:
             
             pair_i_metric_list.append(pair_i_metric)
