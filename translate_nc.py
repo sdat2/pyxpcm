@@ -5,7 +5,7 @@ import run_through_gmm as rtg
 
 
 @rtg.timeit
-def pair_i_metric(ds):
+def pair_i_metric(ds, threshold=0.05):
     
     sorted_version = np.sort(ds.A_B.values, axis=0)
     # (2, 12, 60, 240)
@@ -35,7 +35,7 @@ def pair_i_metric(ds):
                 for k in range(shape[3]):
                     
                     if np.array_equal(pair, sorted_version[:, i, j, k]):
-                        if i_metric[i, j, k] >= 0.05:
+                        if i_metric[i, j, k] >= threshold:
                             
                             pair_i_metric[i, j, k] = i_metric[i, j, k]
                             at_least_one_point = True
@@ -70,7 +70,7 @@ def pair_i_metric(ds):
     return da
 
 
-def get_pair_i_metric_da(ds):
+def get_pair_i_metric_da(ds, threshold=0.05):
     da  = pair_i_metric(ds)
     print(da.__str__())
     return da

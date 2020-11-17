@@ -68,6 +68,13 @@ def _return_folder(K, pca):
     return folder
 
 
+def _return_pair_folder(K, pca):
+    folder = 'nc/pair-i-metric-k-' + str(K) + '-d-'+ str(d) + '/'
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    return folder
+
+
 @timeit
 def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
                                max_depth=2000, separate_pca=True):
@@ -212,7 +219,7 @@ def run_through():
         merge_and_save_joint(K=K)
 
     
-run_through()
+# run_through()
 
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):
