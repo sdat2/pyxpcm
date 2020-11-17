@@ -18,7 +18,7 @@ import run_through_gmm as rtg
 
 
 @rtg.timeit
-def plot_da(da, time_i):
+def plot_da(da, time_i, K, pca):
     
     map_proj = ccrs.SouthPolarStereo()
     carree = ccrs.PlateCarree()
@@ -70,8 +70,10 @@ def plot_da(da, time_i):
     ax1.coastlines()
     plt.tight_layout()
     ts = pd.to_datetime(str(da.coords['time'].values[time_i])) 
-    plt.savefig('../FBSO-Report/images/i_metric_' 
+    
+    plt.savefig(rtg._return_plot_folder(K, pca) 
                 + ts.strftime('%Y-%m-%d') +'_'
                 + '.png', dpi=600, bbox_inches='tight')    
+    
     plt.clf()
 

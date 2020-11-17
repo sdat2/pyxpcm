@@ -44,11 +44,24 @@ def timeit(method):
     return timed
 
 
+@timeit
 def _return_name(K, pca):           
+    
     return 'nc/i-metric-joint-k-' + str(K) + '-d-' + str(pca)
 
 
+@timeit
+def _return_plot_folder(K, pca):
+    folder =  ('../FBSO-Report/images/i-metric-joint-k-' 
+               + str(K) + '-d-' + str(pca) + '/')     
+    if not os.path.exists(folder):
+        os.makedirs(folder)     
+    return folder
+
+
+@timeit
 def _return_folder(K, pca):  
+    
     folder = _return_name(K, pca) + '/'      
     if not os.path.exists(folder):
         os.makedirs(folder)     
@@ -147,7 +160,8 @@ def pca_from_interpolated_year(m, pca=2, K=5, time_i=42, max_depth=2000):
 
     ds.coords['time'].attrs = salt_nc.coords['time'].attrs
     
-    ds.to_netcdf(_return_folder(K, pca) + str(time_i) + '.nc', format='NETCDF4')
+    ds.to_netcdf(_return_folder(K, pca) + str(time_i) 
+                 + '.nc', format='NETCDF4')
 
     #return ds
 
@@ -184,15 +198,17 @@ def merge_and_save_joint(K=5, pca=3):
 
 @timeit
 def run_through():
-    K_list =  [4, 5, 2, 100]
+    K_list =  [#4, 5, 2, 
+               100]
     for K in K_list:
-        if K != 4:  
-            run_through_joint_two(K=K)
+        if K != 4: 
+            print('ok') 
+            # run_through_joint_two(K=K)
     for K in K_list:
         merge_and_save_joint(K=K)
 
     
-run_through()
+# run_through()
 
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):

@@ -1086,6 +1086,21 @@ class pcm(object):
             with self._context('fit.fit', self._context_args):
                 self._classifier.fit(X)
 
+            with self._context('fit.reorder', self.context_args)
+                 # Will only work with GMM from sklearn.
+                 def sort_gmm_by_mean(gmm):
+                    weights = gmm.weights_
+                    means = gmm.means_
+                    covariances = gmm.covariances_
+                    # sorts so that the lowest is 0
+                    new_order = np.argsort(means[:, 0])
+                    for i in range(means.shape[0]):
+                        gmm.means_[i, :] = means[new_order[i], :]
+                        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
+                        gmm.weights_[i] =  weights[new_order[i]]
+                    return gmm
+                self._classifier = sort_gmm_by_mean(self._classifier)
+
             with self._context('fit.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
 
@@ -1156,6 +1171,7 @@ class pcm(object):
             # CLASSIFICATION PREDICTION:
             with self._context('predict.predict', self._context_args):
                 labels = self._classifier.predict(X)
+
             with self._context('predict.score', self._context_args):
                 llh = self._classifier.score(X)
 
@@ -1223,6 +1239,20 @@ class pcm(object):
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit_predict.fit', self._context_args):
                 self._classifier.fit(X)
+            with self._context('fit_predict.reorder', self.context_args)
+                 # Will only work with GMM from sklearn.
+                 def sort_gmm_by_mean(gmm):
+                    weights = gmm.weights_
+                    means = gmm.means_
+                    covariances = gmm.covariances_
+                    # sorts so that the lowest is 0
+                    new_order = np.argsort(means[:, 0])
+                    for i in range(means.shape[0]):
+                        gmm.means_[i, :] = means[new_order[i], :]
+                        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
+                        gmm.weights_[i] =  weights[new_order[i]]
+                    return gmm
+                self._classifier = sort_gmm_by_mean(self._classifier)
             with self._context('fit_predict.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
 
