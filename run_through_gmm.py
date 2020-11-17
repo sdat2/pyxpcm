@@ -79,17 +79,23 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
     z = np.arange(-min_depth, -max_depth, -10.)
     features_pcm = {'THETA': z, 'SALT': z}
     features = {'THETA': 'THETA', 'SALT': 'SALT'}
-    salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i+12))
-    theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i+12))
-    big_nc = xr.merge([salt_nc, theta_nc])
-    both_nc = big_nc.where(big_nc.coords['Depth'] >
+    fname = 'interp.nc'                                  
+    if not os.path.isfile(fname):  
+        salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i+12))
+        theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i+12))
+        big_nc = xr.merge([salt_nc, theta_nc])
+        both_nc = big_nc.where(big_nc.coords['Depth'] >
                            max_depth).drop(['iter', 'Depth',
                                             'rA', 'drF', 'hFacC'])
 
-    lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60*4)
-    lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
-    ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new}) #, method='cubic')
-
+        lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60*4)
+        lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
+  
+    
+        ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new}) #, method='cubic')
+        ds.to_netcdf(fname)
+    else:
+        ds = xr.open_dataset(fname)
     m = pcm(K=K, features=features_pcm,
             separate_pca=separate_pca,
             maxvar=maxvar,
@@ -101,11 +107,12 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
                         dim='Z', inplace=True)
 
     m.find_i_metric(ds, inplace=True)
-    # m.predict(ds, features=features, dim='Z',inplace=True)
+    m.predict(ds, features=features, dim='Z',inplace=True)
 
     del ds.PCA_VALUES.attrs['_pyXpcm_cleanable']
     del ds.IMETRIC.attrs['_pyXpcm_cleanable']
     del ds.A_B.attrs['_pyXpcm_cleanable']
+    del ds.PCM_LABELS.attrs['_pyXpcm_cleanable']
 
     ds = ds.drop(['THETA', 'SALT'])
 
@@ -198,17 +205,14 @@ def merge_and_save_joint(K=5, pca=3):
 
 @timeit
 def run_through():
-    K_list =  [#4, 5, 2, 
-               100]
-    for K in K_list:
-        if K != 4: 
-            print('ok') 
-            # run_through_joint_two(K=K)
+    K_list =  [20]
+    for K in K_list:  
+        run_through_joint_two(K=K)
     for K in K_list:
         merge_and_save_joint(K=K)
 
     
-# run_through()
+run_through()
 
 
 def one_fit(ds, K, features, features_pcm, separate_pca, maxvar):

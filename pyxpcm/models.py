@@ -44,7 +44,27 @@ from sklearn.exceptions import NotFittedError
 ####### Scikit-learn statistic backend:
 # http://scikit-learn.org/stable/modules/mixture.html
 from sklearn.mixture import GaussianMixture
+import copy
 
+def sort_gmm_by_mean(gmm):
+    # transfering to new things
+    weights = copy.deepcopy(gmm.weights_)
+    means = copy.deepcopy(gmm.means_)
+    covariances = copy.deepcopy(gmm.covariances_)
+    precisions = copy.deepcopy(gmm.precisions_)
+    precisions_cholesky = copy.deepcopy(gmm.precisions_cholesky_)
+    # sorts so that the lowest is 0
+    new_order = np.argsort(gmm.means_[:, 0]) # means.mean(axis=1))
+
+    for i in range(means.shape[0]):
+        # altering GMM
+        gmm.weights_[i] =  weights[new_order[i]]
+        gmm.means_[i, :] = means[new_order[i], :]
+        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
+        gmm.precisions_[i, :, :] = precisions[new_order[i], :, :]
+        gmm.precisions_cholesky_[i, :, :] = precisions_cholesky[new_order[i], :, :]
+
+    return gmm
 
 class PCMFeatureError(Exception):
     """Exception raised when features not correct"""
@@ -1086,19 +1106,8 @@ class pcm(object):
             with self._context('fit.fit', self._context_args):
                 self._classifier.fit(X)
 
-            with self._context('fit.reorder', self.context_args)
+            with self._context('fit.reorder', self._context_args):
                  # Will only work with GMM from sklearn.
-                 def sort_gmm_by_mean(gmm):
-                    weights = gmm.weights_
-                    means = gmm.means_
-                    covariances = gmm.covariances_
-                    # sorts so that the lowest is 0
-                    new_order = np.argsort(means[:, 0])
-                    for i in range(means.shape[0]):
-                        gmm.means_[i, :] = means[new_order[i], :]
-                        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
-                        gmm.weights_[i] =  weights[new_order[i]]
-                    return gmm
                 self._classifier = sort_gmm_by_mean(self._classifier)
 
             with self._context('fit.score', self._context_args):
@@ -1239,20 +1248,10 @@ class pcm(object):
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit_predict.fit', self._context_args):
                 self._classifier.fit(X)
-            with self._context('fit_predict.reorder', self.context_args)
-                 # Will only work with GMM from sklearn.
-                 def sort_gmm_by_mean(gmm):
-                    weights = gmm.weights_
-                    means = gmm.means_
-                    covariances = gmm.covariances_
-                    # sorts so that the lowest is 0
-                    new_order = np.argsort(means[:, 0])
-                    for i in range(means.shape[0]):
-                        gmm.means_[i, :] = means[new_order[i], :]
-                        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
-                        gmm.weights_[i] =  weights[new_order[i]]
-                    return gmm
+
+            with self._context('fit_predict.reorder', self._context_args):
                 self._classifier = sort_gmm_by_mean(self._classifier)
+
             with self._context('fit_predict.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
 

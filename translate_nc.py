@@ -56,7 +56,8 @@ def pair_i_metric(ds):
     pair_str_list = []
 
     for i in range(len(pair_list)):
-        pair_str_list.append( str(pair_list[i][0]) + ' to ' + str(pair_list[i][1]))
+        pair_str_list.append(str(pair_list[i][0] + 1 ) 
+                             + ' to ' + str(pair_list[i][1] + 1))
 
     da = xr.DataArray(pair_i_metric_array,
                       dims=['pair', 'time', 
