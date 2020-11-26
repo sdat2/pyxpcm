@@ -46,6 +46,7 @@ from sklearn.exceptions import NotFittedError
 from sklearn.mixture import GaussianMixture
 import copy
 
+
 def sort_gmm_by_mean(gmm):
     # transfering to new things
     weights = copy.deepcopy(gmm.weights_)
@@ -65,6 +66,7 @@ def sort_gmm_by_mean(gmm):
         gmm.precisions_cholesky_[i, :, :] = precisions_cholesky[new_order[i], :, :]
 
     return gmm
+
 
 class PCMFeatureError(Exception):
     """Exception raised when features not correct"""

@@ -68,8 +68,11 @@ def _return_folder(K, pca):
     return folder
 
 
+def _return_pair_name(K, pca):
+    return 'nc/pair-i-metric-k-' + str(K) + '-d-' + str(pca) 
+
 def _return_pair_folder(K, pca):
-    folder = 'nc/pair-i-metric-k-' + str(K) + '-d-'+ str(d) + '/'
+    folder = 'nc/pair-i-metric-k-' + str(K) + '-d-'+ str(pca) + '/'
     if not os.path.exists(folder):
         os.makedirs(folder)
     return folder
@@ -210,9 +213,24 @@ def merge_and_save_joint(K=5, pca=3):
     xr.save_mfdataset([pca_ds], [_return_name(K, pca) + '.nc'], format='NETCDF4')
 
 
+def merge_pair(K=5, pca=3):
+    ds = xr.open_mfdataset(_return_pair_folder(K, pca) + '*.nc',
+                           concat_dim='time',
+                           combine='by_coords',
+                           chunks={'time': 1},
+                           data_vars='minimal',
+                           coords='minimal',
+                           compat='override')
+    xr.save_mfdataset([ds], [_return_pair_name(K, pca) + '..nc' ] , format='NETCDF4')
+
+
+#for K in [20]:
+#    merge_pair(K)
+
+
 @timeit
 def run_through():
-    K_list =  [20]
+    K_list =  [5, 4, 2]
     for K in K_list:  
         run_through_joint_two(K=K)
     for K in K_list:

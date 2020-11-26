@@ -212,15 +212,15 @@ def replacement_color_list(number_of_colors):
                4: ['b', 'green', 'orange', 'r'],
                5: ['navy', 'b', 'green', 'orange', 'r'],
                6: ['navy', 'b', 'green', 'orange', 'r', 'darkred'],
-               7: ['navy', 'b', 'green', 'yellow', 'orange', 'r', 'darkred'],
-               8: ['navy', 'b', 'green', 'yellow', 'orange', 'r', 'darkred', '#fe019a'],
-               9: ['navy', 'b', '#b8ffeb', 'green', 'yellow', 'orange', 'r', 'darkred', '#fe019a'],
-               10: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'yellow', 'orange', 'r', 'darkred', '#fe019a'],
-               11: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'yellow', 'orange', 'r', 'darkred', '#cf0234',
+               7: ['navy', 'b', 'green', 'olive', 'orange', 'r', 'darkred'],
+               8: ['navy', 'b', 'green', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
+               9: ['navy', 'b', '#b8ffeb', 'green', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
+               10: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
+               11: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', 'orange', 'r', 'darkred', '#cf0234',
                     '#fe019a'],
-               12: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'yellow', 'orange', 'r', 'darkred', '#cf0234',
+               12: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', 'orange', 'r', 'darkred', '#cf0234',
                     '#6e1005', '#fe019a'],
-               13: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'yellow', '#fdb915', 'orange', 'r', 'darkred',
+               13: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', '#fdb915', 'orange', 'r', 'darkred',
                     '#cf0234', '#6e1005', '#fe019a'],
                }
     if number_of_colors in color_d:
@@ -383,7 +383,7 @@ def plot_ellipse(fig, ax, covariance_matrix, mean,
         z = radii[2] * np.outer(np.ones_like(u), np.cos(v))  # MESH FOR Z
 
         # move so that the gaussian is actually rotated and on the right point.
-        
+
         for i in range(len(x)):
             for j in range(len(x)):
 
