@@ -213,7 +213,8 @@ def replacement_color_list(number_of_colors):
                5: ['navy', 'b', 'green', 'orange', 'r'],
                6: ['navy', 'b', 'green', 'orange', 'r', 'darkred'],
                7: ['navy', 'b', 'green', 'olive', 'orange', 'r', 'darkred'],
-               8: ['navy', 'b', 'green', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
+               8: ['navy', 'b', 'green', 'olive', 'orange', 'r', 'darkred', 'deeppink' #'#fe019a'
+                  ],
                9: ['navy', 'b', '#b8ffeb', 'green', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
                10: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', 'orange', 'r', 'darkred', '#fe019a'],
                11: ['navy', 'b', '#b8ffeb', 'green', '#ccfd7f', 'olive', 'orange', 'r', 'darkred', '#cf0234',
