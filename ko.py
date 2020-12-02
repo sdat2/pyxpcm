@@ -4,6 +4,7 @@ Currently plots Kim and Orsi 2014 (KO) & Mackie et al. 2019 (M)
 TODO throw away everything that isn't the main contour
 TODO Measure correlation between KO and M fronts
 """
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
@@ -240,7 +241,10 @@ def run_so_map():
     #make_map_right_size()
     plt.legend()
     #plt.show()
-    plt.savefig('ko-example.png', dpi=600, bbox_inches='tight')
+    PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    DATA_PATH = os.path.join(PROJECT_PATH, 'FBSO-Report', 'images', 'ko-example.png' )
+    plt.savefig(DATA_PATH + 'ko-example.png', dpi=600, bbox_inches='tight')
+
 
 if __name__ == "__main__":
     run_so_map()
