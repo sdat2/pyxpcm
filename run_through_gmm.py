@@ -63,6 +63,7 @@ def _return_plot_folder(K, pca):
 def _return_folder(K, pca):
 
     folder = _return_name(K, pca) + '/'
+
     if not os.path.exists(folder):
         os.makedirs(folder)
     return folder
@@ -215,6 +216,7 @@ def merge_and_save_joint(K=5, pca=3):
     xr.save_mfdataset([pca_ds], [_return_name(K, pca) + '.nc'], format='NETCDF4')
 
 
+@timeit
 def merge_pair(K=5, pca=3):
     ds = xr.open_mfdataset(_return_pair_folder(K, pca) + '*.nc',
                            concat_dim='time',
@@ -232,7 +234,7 @@ def merge_pair(K=5, pca=3):
 
 @timeit
 def run_through():
-    K_list =  [5, 4, 2]
+    K_list =  [4, 2, 10]
     for K in K_list:
         run_through_joint_two(K=K)
     for K in K_list:
@@ -311,4 +313,11 @@ def run_k_on_interpolated_year(time_i=42, min_depth=300,
     # for K in range(3, 10):
     print(bic_list)
 
+
 # run_k_on_interpolated_year(separate_pca=False)
+
+if __name__ == "__main__":
+    merge_and_save_joint(K=5)
+
+
+    # run_through()

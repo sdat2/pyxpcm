@@ -10,7 +10,6 @@ import os, sys
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 import matplotlib.patches as patch
 
-
 import pyxpcm
 from pyxpcm.models import pcm
 import run_throughs.sithom_plot_style as sps
