@@ -24,7 +24,7 @@ def timeit(method):
     example usage:
     tmp_log_data={}
     part = spin_forward(400, co, particles=copy.deepcopy(particles),
-                        log_time=tmp_log_d) 
+                        log_time=tmp_log_d)
     # chuck it into part to stop interference.
     assert part != particles
     spin_round_time[key].append(tmp_log_data['SPIN_FORWARD'])
@@ -45,31 +45,31 @@ def timeit(method):
 
 
 @timeit
-def _return_name(K, pca):           
-    
+def _return_name(K, pca):
+
     return 'nc/i-metric-joint-k-' + str(K) + '-d-' + str(pca)
 
 
 @timeit
 def _return_plot_folder(K, pca):
-    folder =  ('../FBSO-Report/images/i-metric-joint-k-' 
-               + str(K) + '-d-' + str(pca) + '/')     
+    folder =  ('../FBSO-Report/images/i-metric-joint-k-'
+               + str(K) + '-d-' + str(pca) + '/')
     if not os.path.exists(folder):
-        os.makedirs(folder)     
+        os.makedirs(folder)
     return folder
 
 
 @timeit
-def _return_folder(K, pca):  
-    
-    folder = _return_name(K, pca) + '/'      
+def _return_folder(K, pca):
+
+    folder = _return_name(K, pca) + '/'
     if not os.path.exists(folder):
-        os.makedirs(folder)     
+        os.makedirs(folder)
     return folder
 
 
 def _return_pair_name(K, pca):
-    return 'nc/pair-i-metric-k-' + str(K) + '-d-' + str(pca) 
+    return 'nc/pair-i-metric-k-' + str(K) + '-d-' + str(pca)
 
 def _return_pair_folder(K, pca):
     folder = 'nc/pair-i-metric-k-' + str(K) + '-d-'+ str(pca) + '/'
@@ -80,7 +80,8 @@ def _return_pair_folder(K, pca):
 
 @timeit
 def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
-                               max_depth=2000, separate_pca=True):
+                               max_depth=2000, separate_pca=True,
+                               remove_s_and_t=True):
 
     main_dir = '/Users/simon/bsose_monthly/'
     salt = main_dir + 'bsose_i106_2008to2012_monthly_Salt.nc'
@@ -89,8 +90,8 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
     z = np.arange(-min_depth, -max_depth, -10.)
     features_pcm = {'THETA': z, 'SALT': z}
     features = {'THETA': 'THETA', 'SALT': 'SALT'}
-    fname = 'interp.nc'                                  
-    if not os.path.isfile(fname):  
+    fname = 'interp.nc'
+    if not os.path.isfile(fname):
         salt_nc = xr.open_dataset(salt).isel(time=slice(time_i, time_i+12))
         theta_nc = xr.open_dataset(theta).isel(time=slice(time_i, time_i+12))
         big_nc = xr.merge([salt_nc, theta_nc])
@@ -100,8 +101,8 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
 
         lons_new = np.linspace(both_nc.XC.min(), both_nc.XC.max(), 60*4)
         lats_new = np.linspace(both_nc.YC.min(), both_nc.YC.max(), 60)
-  
-    
+
+
         ds = both_nc.interp(coords={'YC': lats_new, 'XC': lons_new}) #, method='cubic')
         ds.to_netcdf(fname)
     else:
@@ -124,7 +125,8 @@ def train_on_interpolated_year(time_i=42, K=5, maxvar=3, min_depth=300,
     del ds.A_B.attrs['_pyXpcm_cleanable']
     del ds.PCM_LABELS.attrs['_pyXpcm_cleanable']
 
-    ds = ds.drop(['THETA', 'SALT'])
+    if remove_s_and_t:
+        ds = ds.drop(['THETA', 'SALT'])
 
     return m, ds
 
@@ -155,8 +157,8 @@ def pca_from_interpolated_year(m, pca=2, K=5, time_i=42, max_depth=2000):
 
     ds = m.add_pca_to_xarray(ds, features=features,
                             dim='Z', inplace=True)
-    
-    
+
+
     def sanitize():
         del ds.IMETRIC.attrs['_pyXpcm_cleanable']
         del ds.A_B.attrs['_pyXpcm_cleanable']
@@ -176,8 +178,8 @@ def pca_from_interpolated_year(m, pca=2, K=5, time_i=42, max_depth=2000):
                             [salt_nc.coords['time'].values])})
 
     ds.coords['time'].attrs = salt_nc.coords['time'].attrs
-    
-    ds.to_netcdf(_return_folder(K, pca) + str(time_i) 
+
+    ds.to_netcdf(_return_folder(K, pca) + str(time_i)
                  + '.nc', format='NETCDF4')
 
     #return ds
@@ -185,7 +187,7 @@ def pca_from_interpolated_year(m, pca=2, K=5, time_i=42, max_depth=2000):
 
 @timeit
 def run_through_joint_two(K=5, pca=3):
-    m, ds = train_on_interpolated_year(time_i=42, K=K, 
+    m, ds = train_on_interpolated_year(time_i=42, K=K,
                                        maxvar=pca, min_depth=300,
                                        max_depth=2000, separate_pca=False)
 
@@ -231,12 +233,12 @@ def merge_pair(K=5, pca=3):
 @timeit
 def run_through():
     K_list =  [5, 4, 2]
-    for K in K_list:  
+    for K in K_list:
         run_through_joint_two(K=K)
     for K in K_list:
         merge_and_save_joint(K=K)
 
-    
+
 # run_through()
 
 
@@ -303,8 +305,8 @@ def run_k_on_interpolated_year(time_i=42, min_depth=300,
 
     for K in range(2, 20):
 
-        bic_list.append(one_fit(ds, K, 
-                                features, features_pcm, 
+        bic_list.append(one_fit(ds, K,
+                                features, features_pcm,
                                 separate_pca, maxvar))
     # for K in range(3, 10):
     print(bic_list)
