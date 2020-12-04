@@ -317,7 +317,4 @@ def run_k_on_interpolated_year(time_i=42, min_depth=300,
 # run_k_on_interpolated_year(separate_pca=False)
 
 if __name__ == "__main__":
-    merge_and_save_joint(K=5)
-
-
-    # run_through()
+    merge_and_save_joint(K=4)
