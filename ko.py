@@ -19,10 +19,9 @@ def southern_ocean_axes_setup():
     map_proj = ccrs.SouthPolarStereo()
     fig = plt.figure()
     ax = fig.add_subplot(111, projection=map_proj)
-    #fig, ax = plt.subplots(projection=map_proj)
+    # fig, ax = plt.subplots(projection=map_proj)
     ax.set_extent([-180, 180, -90, -30], carree)
-    fig.subplots_adjust(bottom=0.05, top=0.95, left=0.04,
-                         right=0.95, wspace=0.02)
+    fig.subplots_adjust(bottom=0.05, top=0.95, left=0.04, right=0.95, wspace=0.02)
 
     def plot_boundary():
         theta = np.linspace(0, 2 * np.pi, 100)
@@ -36,10 +35,7 @@ def southern_ocean_axes_setup():
     plot_boundary()
 
 
-
-def is_too_far(lat_A=0.0, lat_B=0.0,
-               lon_A=0.0, lon_B=0.0,
-               max_allowable_square=1):
+def is_too_far(lat_A=0.0, lat_B=0.0, lon_A=0.0, lon_B=0.0, max_allowable_square=1):
     """
     Check if points are too far apart to draw a line between
     I suspect it will run into difficulties at the IDL
@@ -56,16 +52,14 @@ def is_too_far(lat_A=0.0, lat_B=0.0,
         lon_B += 360
     # This will suppress line breaking at Greenwich meridian
     if lon_A > 360 - max_allowable_square and lon_B < max_allowable_square:
-            return False
+        return False
     elif lon_B > 360 - max_allowable_square and lon_A < max_allowable_square:
-            return False
+        return False
     else:
-        return (lat_A-lat_B)**2 + (lon_A-lon_B)**2 > max_allowable_square
+        return (lat_A - lat_B) ** 2 + (lon_A - lon_B) ** 2 > max_allowable_square
 
 
-def split_into_list_of_lists(max_square=1,
-                             list_of_xs=[0.0],
-                             list_of_ys=[0.0]):
+def split_into_list_of_lists(max_square=1, list_of_xs=[0.0], list_of_ys=[0.0]):
     """
     :param max_square:
     :param list_of_xs:
@@ -76,28 +70,32 @@ def split_into_list_of_lists(max_square=1,
     lol_ys = [[list_of_ys[0]]]
     index_lists = 0
 
-    for i in range(len(list_of_xs)-1):
-        if is_too_far(lon_A=list_of_xs[i],
-                      lon_B=list_of_xs[i+1],
-                      lat_A=list_of_ys[i],
-                      lat_B=list_of_ys[i+1],
-                      max_allowable_square=max_square):
+    for i in range(len(list_of_xs) - 1):
+        if is_too_far(
+            lon_A=list_of_xs[i],
+            lon_B=list_of_xs[i + 1],
+            lat_A=list_of_ys[i],
+            lat_B=list_of_ys[i + 1],
+            max_allowable_square=max_square,
+        ):
             index_lists += 1
             lol_xs.append([])
             lol_ys.append([])
 
-        lol_ys[index_lists].append(list_of_ys[i+1])
-        lol_xs[index_lists].append(list_of_xs[i+1])
+        lol_ys[index_lists].append(list_of_ys[i + 1])
+        lol_xs[index_lists].append(list_of_xs[i + 1])
 
     return lol_xs, lol_ys
 
 
-def plot_list_of_lists(lol_of_xs=[[0.0], [0.0]],
-                       lol_of_ys=[[0.0], [0.0]],
-                       color='red',
-                       markersize=0.3,
-                       label='UNLABELED',
-                       line_type='-'):
+def plot_list_of_lists(
+    lol_of_xs=[[0.0], [0.0]],
+    lol_of_ys=[[0.0], [0.0]],
+    color="red",
+    markersize=0.3,
+    label="UNLABELED",
+    line_type="-",
+):
     """
     Matlplotlib cannot plot a list of lists
 
@@ -124,51 +122,63 @@ def plot_list_of_lists(lol_of_xs=[[0.0], [0.0]],
             npa_xs = np.asarray(lol_of_xs[list_no])
             npa_ys = np.asarray(lol_of_ys[list_no])
 
-            for i in range(len(lol_of_xs[list_no])//break_size):
-                new_lol_of_xs.append(npa_xs[(i)*break_size
-                                            : (i+1)*break_size+1].tolist())
-                new_lol_of_ys.append(npa_ys[(i)*break_size
-                                            : (i+1)*break_size+1].tolist())
+            for i in range(len(lol_of_xs[list_no]) // break_size):
+                new_lol_of_xs.append(
+                    npa_xs[(i) * break_size : (i + 1) * break_size + 1].tolist()
+                )
+                new_lol_of_ys.append(
+                    npa_ys[(i) * break_size : (i + 1) * break_size + 1].tolist()
+                )
 
-            new_lol_of_xs.append(npa_xs[len(lol_of_xs[list_no])
-                                        //break_size: ].tolist())
-            new_lol_of_ys.append(npa_xs[len(lol_of_ys[list_no])
-                                        //break_size: ].tolist())
-
+            new_lol_of_xs.append(
+                npa_xs[len(lol_of_xs[list_no]) // break_size :].tolist()
+            )
+            new_lol_of_ys.append(
+                npa_xs[len(lol_of_ys[list_no]) // break_size :].tolist()
+            )
 
         else:
             new_lol_of_xs.append(lol_of_xs[list_no])
             new_lol_of_ys.append(lol_of_ys[list_no])
 
-
     not_labelled = True
 
-
     for list_no in range(len(new_lol_of_xs)):
-        x_values = (np.mod(np.asarray(new_lol_of_xs[list_no])
-                           +180, 360)-180).tolist()
+        x_values = (
+            np.mod(np.asarray(new_lol_of_xs[list_no]) + 180, 360) - 180
+        ).tolist()
 
-
-        if (x_values[0] > -180 and x_values[0] < 179 and
-            x_values[1] > -180 and x_values[1] < 179):
+        if (
+            x_values[0] > -180
+            and x_values[0] < 179
+            and x_values[1] > -180
+            and x_values[1] < 179
+        ):
             x_map_temp, y_map_temp = (x_values, new_lol_of_ys[list_no])
 
             if not_labelled:
                 # only label the first list
-                plt.plot(x_map_temp, y_map_temp, line_type,
-                         markersize=markersize,
-                         label=label, color=color,
-                         transform=ccrs.PlateCarree(),
-                         LineWidth=0.3)
+                plt.plot(
+                    x_map_temp,
+                    y_map_temp,
+                    line_type,
+                    markersize=markersize,
+                    label=label,
+                    color=color,
+                    transform=ccrs.PlateCarree(),
+                    LineWidth=0.3,
+                )
                 not_labelled = False
             else:
-                plt.plot(x_map_temp,
-                         y_map_temp,
-                         line_type,
-                         markersize=markersize,
-                         color=color,
-                         transform=ccrs.PlateCarree(),
-                         LineWidth=0.3)
+                plt.plot(
+                    x_map_temp,
+                    y_map_temp,
+                    line_type,
+                    markersize=markersize,
+                    color=color,
+                    transform=ccrs.PlateCarree(),
+                    LineWidth=0.3,
+                )
 
 
 def draw_fronts_kim():
@@ -177,6 +187,7 @@ def draw_fronts_kim():
     Data and plot it on SO.
     Now also includes the data from Kim (c.1995) for the STF
     """
+
     def multi_line_map_plot():
         """
         Small function to split into
@@ -184,34 +195,57 @@ def draw_fronts_kim():
         :return:
         """
         for key in keys:
-            if key == 'stf':
+            if key == "stf":
                 max_square = 8
             else:
                 max_square = 1
 
-            lol_xs, lol_ys = split_into_list_of_lists(max_square=max_square,
-                                                      list_of_xs=longitudes[key],
-                                                      list_of_ys=latitudes[key])
-            #print(lol_xs, lol_ys)
-            plot_list_of_lists(lol_of_xs=lol_xs,
-                               lol_of_ys=lol_ys,
-                               color=color_dict[key],
-                               markersize=marker_size_dict[key],
-                               label=label_dict[key],
-                               line_type='-')
+            lol_xs, lol_ys = split_into_list_of_lists(
+                max_square=max_square,
+                list_of_xs=longitudes[key],
+                list_of_ys=latitudes[key],
+            )
+            # print(lol_xs, lol_ys)
+            plot_list_of_lists(
+                lol_of_xs=lol_xs,
+                lol_of_ys=lol_ys,
+                color=color_dict[key],
+                markersize=marker_size_dict[key],
+                label=label_dict[key],
+                line_type="-",
+            )
+
     latitudes = {}
     longitudes = {}
-    DATA_DIR = 'data/'
-    files_names = ['stf.tsv', 'pf_kim.txt', 'saccf_kim.txt',
-                   'saf_kim.txt', 'sbdy_kim.txt']
+    DATA_DIR = "data/"
+    files_names = [  #'stf.tsv',
+        "pf_kim.txt",
+        "saccf_kim.txt",
+        "saf_kim.txt",
+        "sbdy_kim.txt",
+    ]
     files = [DATA_DIR + x for x in files_names]
-    keys = ['stf', 'saf', 'pf', 'saccf', 'sbdy']
-    color_dict = {'saf': 'black', 'pf': 'grey', 'saccf': 'green', 'sbdy': 'olive', 'stf': '#ef4026'}
+    keys = ["saf", "pf", "saccf", "sbdy"]  #'stf',
+    color_dict = {
+        "saf": "black",
+        "pf": "grey",
+        "saccf": "green",
+        "sbdy": "olive",  #'stf': '#ef4026'
+    }
     # label_dict = {'saf': 'SAF-KO', 'pf': 'PF-KO', 'saccf': 'SACCF-KO', 'sbdy': 'SBDY-KO', 'stf': "STF-O"}
-    label_dict = {'saf': 'SAF', 'pf': 'PF', 'saccf': 'SACCF',
-                  'sbdy': 'SBDY', 'stf': "STF"}
+    label_dict = {
+        "saf": "SAF",
+        "pf": "PF",
+        "saccf": "SACCF",
+        "sbdy": "SBDY",  #'stf': "STF"
+    }
 
-    marker_size_dict = {'saf': 0.15, 'pf': 0.30, 'saccf': 0.20, 'sbdy': 0.10, 'stf': 0.20}
+    marker_size_dict = {
+        "saf": 0.15,
+        "pf": 0.30,
+        "saccf": 0.20,
+        "sbdy": 0.10,  #'stf': 0.20
+    }
 
     for file_no in range(len(files)):
         tmp_longitude = []
@@ -221,7 +255,7 @@ def draw_fronts_kim():
             for line in file:
                 #  print(line)
                 if not start:
-                    line_elements = [float(elt.strip()) for elt in line.split('\t')]
+                    line_elements = [float(elt.strip()) for elt in line.split("\t")]
                     tmp_longitude.append(float(line_elements[0]))
                     tmp_latitude.append(float(line_elements[1]))
                 else:
@@ -235,15 +269,15 @@ def draw_fronts_kim():
 def run_so_map():
     southern_ocean_axes_setup()
     draw_fronts_kim()
-    #draw_fronts_mackie()
-    #draw_gridlines(basemap_object)
-    #annotate_kirguelens(basemap_object)
-    #make_map_right_size()
+    # draw_fronts_mackie()
+    # draw_gridlines(basemap_object)
+    # annotate_kirguelens(basemap_object)
+    # make_map_right_size()
     plt.legend()
-    #plt.show()
+    # plt.show()
     PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    DATA_PATH = os.path.join(PROJECT_PATH, 'FBSO-Report', 'images', 'ko-example.png' )
-    plt.savefig(DATA_PATH + 'ko-example.png', dpi=600, bbox_inches='tight')
+    DATA_PATH = os.path.join(PROJECT_PATH, "FBSO-Report", "images", "ko-example.png")
+    plt.savefig(DATA_PATH + "ko-example.png", dpi=600, bbox_inches="tight")
 
 
 if __name__ == "__main__":
