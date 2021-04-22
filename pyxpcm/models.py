@@ -42,6 +42,29 @@ from sklearn.exceptions import NotFittedError
 ####### Scikit-learn statistic backend:
 # http://scikit-learn.org/stable/modules/mixture.html
 from sklearn.mixture import GaussianMixture
+import copy
+
+
+def sort_gmm_by_mean(gmm):
+    # transfering to new things
+    weights = copy.deepcopy(gmm.weights_)
+    means = copy.deepcopy(gmm.means_)
+    covariances = copy.deepcopy(gmm.covariances_)
+    precisions = copy.deepcopy(gmm.precisions_)
+    precisions_cholesky = copy.deepcopy(gmm.precisions_cholesky_)
+    # sorts so that the lowest is 0
+    new_order = np.argsort(gmm.means_[:, 0]) # means.mean(axis=1))
+
+    for i in range(means.shape[0]):
+        # altering GMM
+        gmm.weights_[i] =  weights[new_order[i]]
+        gmm.means_[i, :] = means[new_order[i], :]
+        gmm.covariances_[i, :, :] = covariances[new_order[i], :, :]
+        gmm.precisions_[i, :, :] = precisions[new_order[i], :, :]
+        gmm.precisions_cholesky_[i, :, :] = precisions_cholesky[new_order[i], :, :]
+
+    return gmm
+
 
 class PCMFeatureError(Exception):
     """Exception raised when features not correct"""
@@ -59,11 +82,14 @@ class pcm(object):
                  K:int,
                  features:dict(),
                  scaling=1,
-                 reduction=1, maxvar=15,
-                 classif='gmm', covariance_type='full',
+                 reduction=1, 
+                 maxvar=15,
+                 classif='gmm', 
+                 covariance_type='full',
                  verb=False,
                  debug=False,
-                 timeit=False, timeit_verb=False,
+                 timeit=False, 
+                 timeit_verb=False,
                  chunk_size='auto',
                  backend='sklearn'):
         """Create the PCM instance
@@ -808,6 +834,49 @@ class pcm(object):
                       " and sampling dimensions:", sampling_dims)
         return X, sampling_dims
 
+    def add_pca_to_xarray(self, ds, features=None,
+                          dim=None, action='fit',
+                          mask=None, inplace=False):
+        """Add pca to xarray.
+
+        A function to preprocess the fields, fit the pca,
+        and output the pca coefficients to an xarray dataarray object.
+
+        :param ds: :class:`xarray.Dataset` to process
+        :param features: dictionary
+        :param dim: string for dimension along which the model is fitted (e.g. Z)
+        :param action: string to be forwarded to preprocessing function
+        :param mask: mask over dataset
+        :param inplace: whether to add the dataarray to the existing dataset,
+               or just to return the datarray on its own.
+
+        """
+        with self._context('fit', self._context_args):
+            X, sampling_dims = self.preprocessing(ds, features=features, dim=dim,
+                                                  action=action, mask=mask)
+            pca_values = X.values
+            n_features = str(X.coords['n_features'].values)
+
+        with self._context('add_pca.xarray', self._context_args):
+            P = list()
+            for k in range(np.shape(pca_values)[1]):
+                X = pca_values[:, k]
+                x = self.unravel(ds, sampling_dims, X)
+                P.append(x)
+
+            da = xr.concat(P, dim='pca').rename('PCA_VALUES')
+            da.attrs['long_name'] = 'PCA Values'
+            da.attrs['n_features'] = n_features
+
+        # Add posteriors to the dataset:
+
+        self.fitted = True
+
+        if inplace:
+            return ds.pyxpcm.add(da)
+        else:
+            return da
+
     def fit(self, ds, features=None, dim=None):
         """Estimate PCM parameters
 
@@ -842,6 +911,10 @@ class pcm(object):
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit.fit', self._context_args):
                 self._classifier.fit(X)
+
+            with self._context('fit.reorder', self._context_args):
+                 # Will only work with GMM from sklearn.
+                self._classifier = sort_gmm_by_mean(self._classifier)
 
             with self._context('fit.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
@@ -970,6 +1043,11 @@ class pcm(object):
             # CLASSIFICATION-MODEL TRAINING:
             with self._context('fit_predict.fit', self._context_args):
                 self._classifier.fit(X)
+
+            with self._context('fit.reorder', self._context_args):
+                 # Will only work with GMM from sklearn.
+                self._classifier = sort_gmm_by_mean(self._classifier)
+
             with self._context('fit_predict.score', self._context_args):
                 self._props['llh'] = self._classifier.score(X)
 
