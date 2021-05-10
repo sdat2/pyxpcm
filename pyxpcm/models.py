@@ -1041,6 +1041,9 @@ class pcm(object):
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = self._props['K'] - 1
                 da.attrs['llh'] = llh
+                # Preserve attributes of coordinates:
+                for c in da.coords:
+                    da[c].attrs = ds[c].attrs
 
             # Add labels to the dataset:
             if inplace:
@@ -1128,6 +1131,9 @@ class pcm(object):
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = self._props['K'] - 1
                 da.attrs['llh'] = self._props['llh']
+                # Preserve attributes of coordinates:
+                for c in da.coords:
+                    da[c].attrs = ds[c].attrs
 
             # Add labels to the dataset:
             if inplace:
@@ -1213,6 +1219,9 @@ class pcm(object):
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = 1
                 da.attrs['llh'] = self._props['llh']
+                # Preserve attributes of coordinates:
+                for c in da.coords:
+                    da[c].attrs = ds[c].attrs
 
             # Add posteriors to the dataset:
             if inplace:
