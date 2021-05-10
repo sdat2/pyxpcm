@@ -78,76 +78,56 @@ class PCMClassError(Exception):
 
 class pcm(object):
     """Profile Classification Model class constructor
-
         Consume and return :mod:`xarray` objects
-
     """
     def __init__(self,
                  K:int,
                  features:dict(),
-                 # D:int, # trying to add
                  scaling=1,
                  reduction=1, maxvar=15,
                  classif='gmm', covariance_type='full',
                  verb=False,
                  debug=False,
-                 separate_pca=True,
                  timeit=False, timeit_verb=False,
                  chunk_size='auto',
                  backend='sklearn'):
         """Create the PCM instance
-
         Parameters
         ----------
         K: int
             The number of class, or cluster, in the classification model.
-
         features: dict()
             The vertical axis to use for each features.
             eg: {'temperature':np.arange(-2000,0,1)}
-
         scaling: int (default: 1)
             Define the scaling method:
-
             - 0: No scaling
             - **1: Center on sample mean and scale by sample std**
             - 2: Center on sample mean only
-
         reduction: int (default: 1)
             Define the dimensionality reduction method:
-
             - 0: No reduction
             - **1: Reduction using :class:`sklearn.decomposition.PCA`**
-
         maxvar: float (default: 99.9)
             Maximum feature variance to preserve in the reduced dataset using :class:`sklearn.decomposition.PCA`. In %.
-
         classif: str (default: 'gmm')
             Define the classification method.
             The only method available as of now is a Gaussian Mixture Model.
             See :class:`sklearn.mixture.GaussianMixture` for more details.
-
         covariance_type: str (default: 'full')
             Define the type of covariance matrix shape to be used in the default classifier GMM.
             It can be ‘full’ (default), ‘tied’, ‘diag’ or ‘spherical’.
-
         verb: boolean (default: False)
             More verbose output
-
         timeit: boolean (default: False)
             Register time of operation for performance evaluation
-
         timeit_verb: boolean (default: False)
             Print time of operation during execution
-
         chunk_size: 'auto' or int
             Sampling chunk size, (array of features after pre-processing)
-
         backend: str
             Statistic library backend, 'sklearn' (default) or 'dask_ml'
-
         """
-
         if K==0:
             raise PCMClassError("Can't create a PCM with K=0")
         if K is None:
@@ -159,19 +139,19 @@ class pcm(object):
         elif scaling==1: with_scaler = 'normal'; with_mean=True; with_std = True
         elif scaling==2: with_scaler = 'center'; with_mean=True; with_std = False
         else: raise NameError('scaling must be 0, 1 or 2')
-
+        
         if   reduction==0: with_reducer = False
         elif reduction==1: with_reducer = True
         else: raise NameError('reduction must be 0 or 1')
-
+        
         if classif=='gmm': with_classifier = 'gmm';
         else: raise NameError("classifier must be 'gmm' (no other methods implemented at this time)")
 
-        # todo check validity of the dict of features
+        #todo check validity of the dict of features
 
         self._props = {'K': np.int(K),
                        'F': len(features),
-                       'llh': None,
+                        'llh': None,
                         'COVARTYPE': covariance_type,
                         'with_scaler': with_scaler,
                         'with_reducer': with_reducer,
@@ -180,11 +160,10 @@ class pcm(object):
                         'features': collections.OrderedDict(features),
                         'chunk_size': chunk_size,
                         'backend': backend}
-
         self._xmask = None # xarray mask for nd-array used at pre-processing steps
         self._register = collections.OrderedDict() # Will register mutable instances of sub-modules like 'plot'
 
-        self._verb = verb  # todo _verb is a property, should be set/get with a decorator
+        self._verb = verb #todo _verb is a property, should be set/get with a decorator
         self._debug = debug
 
         self._interpoler = collections.OrderedDict()
@@ -193,78 +172,62 @@ class pcm(object):
         self._reducer = collections.OrderedDict()
         self._homogeniser = collections.OrderedDict()
 
-        self.separate_pca = separate_pca
-        self.fitted = False
-
-        # Load estimators for a statistics backend:
+        # Load estimators for a specific backend:
         bck = StatisticsBackend(backend, scaler='StandardScaler', reducer='PCA')
 
-        # TODO THIS IS A BAD WAY TO ADD CAPACITY TO PCA together
-
-        features_all = features
-        if not separate_pca:
-            features_all['all'] = 'all'
-
-        for feature_name in features_all:
-            if feature_name != 'all':
-                feature_axis = self._props['features'][feature_name]
-                if isinstance(feature_axis, xr.DataArray):
-                    self._props['features'][feature_name] = feature_axis.values
+        for feature_name in features:
+            feature_axis = self._props['features'][feature_name]
+            if isinstance(feature_axis, xr.DataArray):
+                self._props['features'][feature_name] = feature_axis.values
 
             # self._scaler[feature_name] = preprocessing.StandardScaler(with_mean=with_mean,
             #                                             with_std=with_std)
-            if 'none' not in self._props['with_scaler'] and feature_name != 'all':
-                # _scaler is an ordered dict object with
+            if 'none' not in self._props['with_scaler']:
                 self._scaler[feature_name] = bck.scaler(with_mean=with_mean, with_std=with_std)
-            elif feature_name != 'all':
+            else:
                 self._scaler[feature_name] = NoTransform()
-            if feature_name != 'all':
-                self._scaler_props[feature_name] = {'units': '?'}
+            self._scaler_props[feature_name] = {'units': '?'}
+
             is_slice = np.all(feature_axis == None)
             if not is_slice:
-                if feature_name != 'all':
-                    self._interpoler[feature_name] = Vertical_Interpolator(axis=feature_axis, debug=self._debug)
+                self._interpoler[feature_name] = Vertical_Interpolator(axis=feature_axis, debug=self._debug)
                 if np.prod(feature_axis.shape) == 1:
                     # Single level: no need to reduce
                     if self._debug: print('Single level, not need to reduce', np.prod(feature_axis.ndim))
                     self._reducer[feature_name] = NoTransform()
                 else:
                     # Multi-vertical-levels, set reducer:
-                    if (separate_pca) or (not separate_pca and feature_name == 'all'):
-                        if with_reducer:
-                            self._reducer[feature_name] = bck.reducer(n_components=self._props['maxvar'],
-                                                                      svd_solver='full')
-                        else:
-                            self._reducer[feature_name] = NoTransform()
+                    if with_reducer:
+                        self._reducer[feature_name] = bck.reducer(n_components=self._props['maxvar'],
+                                                                  svd_solver='full')
+                    else:
+                        self._reducer[feature_name] = NoTransform()
             else:
-                if feature_name != 'all':
-                    self._interpoler[feature_name] = NoTransform()
-                if (separate_pca) or (not separate_pca and feature_name == 'all'):
-                    self._reducer[feature_name] = NoTransform()
+                self._interpoler[feature_name] = NoTransform()
+                self._reducer[feature_name] = NoTransform()
                 if self._debug: print("%s is single level, no need to reduce" % feature_name)
 
             self._homogeniser[feature_name] = {'mean': 0, 'std': 1}
 
         self._classifier = GaussianMixture(n_components=self._props['K'],
-                                           covariance_type=self._props['COVARTYPE'],
-                                           init_params='kmeans',
-                                           max_iter=1000,
-                                           tol=1e-6)
+                                          covariance_type=self._props['COVARTYPE'],
+                                          init_params='kmeans',
+                                          max_iter=1000,
+                                          tol=1e-6)
 
         # Define the "context" to execute some functions inner code
         # (useful for time benchmarking)
         self._context = self.__empty_context # Default is empty, do nothing
         self._context_args = dict()
-
         if timeit:
             self._context = self.__timeit_context
-            self._context_args = {'maxlevel': 3, 'verb': timeit_verb}
+            self._context_args = {'maxlevel': 3, 'verb':timeit_verb}
             self._timeit = dict()
 
         # Define statistics for the fit method:
-        self._fit_stats = dict({'datetime': None,
-                                'n_samples_seen_': None,
-                                 'score': None, 'etime': None})
+        self._fit_stats = dict({'datetime': None, 'n_samples_seen_': None, 'score': None, 'etime': None})
+
+
 
     @contextmanager
     def __timeit_context(self, name, opts=dict()):
