@@ -48,7 +48,12 @@ import copy
 
 
 def sort_gmm_by_mean(gmm):
-    # transfering to new things
+    """Reorders the gmm object so that the classes are
+    ordered by their mean first principal component value.
+
+    gmm: :class:`sklearn.mixture.GaussianMixture`
+    """
+    # deep copies to allow data reordering.
     weights = copy.deepcopy(gmm.weights_)
     means = copy.deepcopy(gmm.means_)
     covariances = copy.deepcopy(gmm.covariances_)
@@ -1131,6 +1136,7 @@ class pcm(object):
                 da.attrs['valid_min'] = 0
                 da.attrs['valid_max'] = self._props['K'] - 1
                 da.attrs['llh'] = self._props['llh']
+
                 # Preserve attributes of coordinates:
                 for c in da.coords:
                     da[c].attrs = ds[c].attrs
@@ -1229,10 +1235,41 @@ class pcm(object):
             else:
                 return da
 
-    def find_i_metric(self, ds, features=None, dim=None, inplace=False,
-                      name='PCM_I', classdimname='pcm_class'):
-        """
-        Find i metric.
+    def find_i_metric(self, ds, features=None, dim=None, inplace=False):
+        """Find i metric and add to.
+
+        Parameters
+        ----------
+        ds: :class:`xarray.Dataset`
+            The dataset to work with
+
+        features: dict()
+            Definitions of PCM features in the input :class:`xarray.Dataset`.
+            If not specified or set to None, features are identified
+            using :class:`xarray.DataArray` attributes 'feature_name'.
+
+        dim: str
+            Name of the vertical dimension in the input :class:`xarray.Dataset`
+
+        inplace: boolean, False by default
+            If False, return a tuple of two :class:`xarray.DataArray`
+            If True, return the input :class:`xarray.Dataset`
+
+        Returns
+        -------
+        :class:`xarray.DataArray`, :class:`xarray.DataArray`
+            dataarray with i metric inside, datarray with to two inside.
+            sample (if option 'inplace' = False)
+
+        *or*
+
+        :class:`xarray.Dataset`
+            Input dataset with IMETRIC parts:
+            'IMETRIC' new :class:`xarray.DataArray`
+            'A_B' new :class:`xarray.DataArray`
+            (if option 'inplace' = True)
+
+
         """
 
         def get_i_metric(posterior_prob_list):
