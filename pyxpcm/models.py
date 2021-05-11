@@ -51,6 +51,13 @@ def sort_gmm_by_mean(gmm):
     """Reorders the gmm object so that the classes are
     ordered by their mean first principal component value.
 
+    Parameters
+    ----------
+
+    gmm: :class:`sklearn.mixture.GaussianMixture`
+
+    Returns
+    -------
     gmm: :class:`sklearn.mixture.GaussianMixture`
     """
     # deep copies to allow data reordering.
@@ -888,13 +895,27 @@ class pcm(object):
         A function to preprocess the fields, fit the pca,
         and output the pca coefficients to an xarray dataarray object.
 
-        :param ds: :class:`xarray.Dataset` to process
-        :param features: dictionary
-        :param dim: string for dimension along which the model is fitted (e.g. Z)
-        :param action: string to be forwarded to preprocessing function
-        :param mask: mask over dataset
-        :param inplace: whether to add the dataarray to the existing dataset,
+        Parameters
+        ----------
+
+        ds: :class:`xarray.Dataset` to process
+        features: dictionary
+        dim: string for dimension along which the model is fitted (e.g. Z)
+        action: string to be forwarded to preprocessing function
+        mask: mask over dataset
+        inplace: whether to add the dataarray to the existing dataset,
                or just to return the datarray on its own.
+
+        Returns
+        -------
+        :class:`xarray.DataArray`
+            Component labels (if option 'inplace' = False)
+
+        *or*
+
+        :class:`xarray.Dataset`
+            Input dataset with Component labels as a 'PCA_VALUES' new :class:`xarray.DataArray`
+            (if option 'inplace' = True)
 
         """
         with self._context('fit', self._context_args):
